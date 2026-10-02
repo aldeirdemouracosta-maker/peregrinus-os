@@ -24,6 +24,5 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 
 - Release profile autoritativo: `include/peregrinus/release_profile.h` (generation/epoch nunca hardcoded em scripts).
 - Toda correção vem com teste host-side em `tests/` ligado ao `make check`.
-- Ao alterar fontes, regenerar `SOURCE_SHA256SUMS`:
-  `awk '{print $2}' SOURCE_SHA256SUMS | xargs sha256sum > SOURCE_SHA256SUMS.new && mv SOURCE_SHA256SUMS.new SOURCE_SHA256SUMS`
+- Binários e checksums não vão para o git: o workflow `release.yml` (tag `v*`) compila, qualifica e publica binários, `SHA256SUMS` e `SOURCE_SHA256SUMS` nos Releases.
 - Leia de memória mapeada por DMA/MMIO sempre via `volatile`; laços de espera devem ter orçamento que realmente expira.

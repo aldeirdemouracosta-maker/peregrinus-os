@@ -27,8 +27,6 @@ jobs:
         run: |
           clang --version | tee toolchain.txt
           ld.lld --version | tee -a toolchain.txt
-      - name: Verificar checksums das fontes
-        run: sha256sum -c SOURCE_SHA256SUMS --quiet
       - name: Regressão completa
         run: make check
       - name: Perfis live e controlador UEFI
