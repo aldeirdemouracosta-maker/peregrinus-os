@@ -188,6 +188,8 @@ qemu-boot-test:
 	./scripts/qemu-boot-test.sh safe
 	./scripts/qemu-boot-test.sh disk
 	./scripts/qemu-boot-test.sh e1000
+	./scripts/qemu-boot-test.sh journal
+	./scripts/qemu-boot-test.sh commit
 
 qemu-e1000-sandbox:
 	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_QEMU_DMA_TEST=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all

@@ -1,5 +1,5 @@
 ccf5f91886edd2835aa7c34db0dcec4c3c8ecb74f3dd7c7e9dba20d87485f02c  ./LICENSE-PROJECT.txt
-406d763feacfbfbd977afeec059f581796ec35e4b046856310ef371c8b2a4f16  ./Makefile
+145aef8bea13164113f881717f44a03e309d7c110420d9c238f7acdcf4dcb689  ./Makefile
 a064d730a7d909dbbefc678ba76248817fa875cbfde8b2046caf3d47bd1dfd67  ./README.md
 fef25cf6ae4feeb03721f6cbd838ded35a7b5f14d76fbf54e8821478cec25ded  ./THIRD_PARTY_LOCK.md
 b25cac6b53e36ee1610e389cb0106a7167b5f560b0f310f3b23d90f16ef3a989  ./THIRD_PARTY_NOTICES.md
@@ -18,7 +18,7 @@ dfa083811e42b2eb0150650bad0749765c59c584aa0370716b37868d9f992058  ./docs/MURO-0.
 e0b2ec68589b3497462c76f405d5a989e490e820b3f34963182b4d53e0c4c257  ./docs/MURO-1.0.md
 b772954a7c578191f721e99462d3256cd1cb9799098c7fd6e0f2729f39e0b12c  ./docs/PROJECT-REVIEW-2026-10-02.md
 9433b6720e8d7bca05777d82b30e974845973f021e14e050522c2e18bf5f24d2  ./docs/PURGATORIO-0.1.md
-a5dafae09babaa31eec43edeba746881043f2fca0b0350dce9fe3a2e54d02f4d  ./docs/QEMU-BOOT-QUALIFICATION.md
+0653e36c12bb584fe5d02fe89328945996188172d2d921ca61ab88ddd976be70  ./docs/QEMU-BOOT-QUALIFICATION.md
 73ff98036589e57a06b5263199427a4b63796066e7a313462aa161b2a28c5bda  ./include/peregrinus/io.hpp
 bc60fe518f5d8f6561372d0f7469ceb3bf495760939b64b3bf70af332a1ca350  ./include/peregrinus/recovery_journal.h
 cf16704da57485b15f296029de7101aa81e0490f5d69efb24536b555be395e6a  ./include/peregrinus/release_profile.h
@@ -123,15 +123,15 @@ c37c3d48c786549a8e3b968ce0413912b50bcbebc84581553bb4194d77d1634d  ./kernel/stora
 dd68ae804e53b79e32d01e85b30415b68f26a5e9e7f380216840cf0e76894e2e  ./lkg-reference/peregrinus-muro-1.0.1-gen22-safe.elf
 ca2adc50991203930a76ffe242cf2261413c8862e39a13e9ae94a079265682ba  ./scripts/build-trusted-boot-controller.sh
 f5d1ddc2d1d8e4ca7e08cb22b0dfd4c5c741b3628417949977e0deb282dc5a6c  ./scripts/commit-tpm-epoch.sh
-f6508bd2ac626e831dbc5630ca178198dd84f3f6a017d350af5abda5b261a8e0  ./scripts/create-gpt-test-image.py
+658cc355fdd70fe4dfaec5a933db033690e4a220da1801de45b863af8cfab056  ./scripts/create-gpt-test-image.py
 b594b370d61c3a6416ed47b64c4dc568849098cac2fd29d13887aa8d271b7803  ./scripts/fetch-limine.sh
 4770136c6bcab1abed51924b22356d91f4c057a6c11ee2ee201dc3a7b86dd58d  ./scripts/generate-epoch-configs.py
 7ae7848af788435edbdd160ccb6e1ce9984b0a4d57feebdb8352c051fecedcb2  ./scripts/inspect-tpm-anchor.sh
 e6618b50144c47ebd303dea09eb3b1ca349cfc800c9152773705f433eab1285a  ./scripts/make-boot-request.py
-d235695b0c7948902a70d8fe4201fe7275818a3cd659ad893d9169a24733b793  ./scripts/make-iso.sh
+e4375b3795a3ff17d2f79a632332672eedb256257fbfbf054415714815184536  ./scripts/make-iso.sh
 6be89b47707e7c4057f4ebb99caac87fb23737c761841fb5405d0a34d4e23a26  ./scripts/prepare-epoch-transition.sh
 1cb92a16f158cc061ce92fd951100d8a35dae55b5d6ee84aef6e7571999307e4  ./scripts/prepare-secure-boot.sh
-6517db208170e68837085e2275ae9e35f22aa8b2053c363efd856e90ab452702  ./scripts/qemu-boot-test.sh
+4b27f2b587ecbf93e0e1c6c74e7a5260d1931431be3ff1f126e2960c8c831bc5  ./scripts/qemu-boot-test.sh
 7b865ea93c9fba7999b68f853a991f92ed01e687c4f432418a3f6a2ac715ef02  ./scripts/release-profile.py
 8e6b7d2a304b0b18e40cee074829e2f3b60c521e03255ba61db39b8e00d7741c  ./scripts/run-qemu.sh
 110be250b061876c11f9b0d29b79545d9f221238d4ba95904a03f47e9c70f1d9  ./scripts/seal-kernel.py

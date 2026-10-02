@@ -13,7 +13,9 @@ case "$PROFILE" in
   safe) make; BUILD=build; NAME=peregrinus-muro-1.0-safe.iso ;;
   dma-test) make dma-test-kernel; BUILD=build-qemu-dma; NAME=peregrinus-muro-1.0-qemu-dma.iso ;;
   e1000) make qemu-e1000-sandbox; BUILD=build-qemu-e1000; NAME=peregrinus-muro-1.0-e1000-sandbox.iso ;;
-  *) echo "usage: $0 [safe|dma-test|e1000]" >&2; exit 2 ;;
+  journal) make recovery-journal-test-kernel; BUILD=build-recovery-journal-test; NAME=peregrinus-recovery-journal-test.iso ;;
+  commit) make recovery-commit-test-kernel; BUILD=build-recovery-commit-test; NAME=peregrinus-recovery-commit-test.iso ;;
+  *) echo "usage: $0 [safe|dma-test|e1000|journal|commit]" >&2; exit 2 ;;
 esac
 rm -rf "$BUILD/iso_root"
 mkdir -p "$BUILD/iso_root/boot/limine"
