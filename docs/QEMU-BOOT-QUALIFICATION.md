@@ -19,7 +19,26 @@ Any `PEREGRINUS KERNEL PANIC` or `CPU EXCEPTION` fails the test, except in the `
 
 - A direct boot-success commit is only legal after the pre-boot controller recorded a pending attempt. On the stock test image the commit kernel correctly refuses (`MARK-REJECTED`) and panics; the positive path needs the `--pending-current-attempt` image that mimics the controller.
 
+## Full trusted chain (`make qemu-trusted-chain-test`)
+
+OVMF with Secure Boot enforced (Ubuntu's public *snakeoil* test keys) → signed boot controller (`make preboot-recovery-controller`, TPM commit base 41 / next 42) → swtpm NV counter `0x0180F050` → IA_RECOVERY pre-boot journal attempt → signed Limine with its config BLAKE2B enrolled → BLAKE2b-pinned recovery-live kernel → boot-success commit. The disk is the disposable GPT image plus an ESP (`create-gpt-test-image.py --esp-mib`).
+
+| Scenario | Required result |
+|---|---|
+| counter 42 (COMMITTED), booted twice on the same disk | `Secure Boot: ACTIVE`, `TPM state: COMMITTED`, pre-boot journal selects CURRENT, kernel `.text` PASS, generation 23, **`IA_RECOVERY direct boot-success commit: CONFIRMED`** both times |
+| counter 40 (STALE) and 43 (FUTURE) | controller: **`TPM counter incompatible with media; FAIL-CLOSED`**; no loader, no kernel |
+| one flipped byte in the kernel on the ESP | controller chainloads Limine; the **kernel never starts** (enrolled-config hash pin) |
+| unsigned controller | firmware: **`Access Denied`**; nothing runs |
+
+Test keys only; nothing produced here is a release artifact.
+
+### Findings from the first trusted-chain run
+
+- **recovery-live could never complete a boot.** Its read-only GPT probe was gated on `disposable_qemu_disk_only`, so on any non-QEMU-test disk boot health was UNAVAILABLE and the Guard halted before the boot-success commit. The probe now uses `recovery_metadata_live`, the gate the anchor/journal readers already used (`tests/safety.sh` checks it). SAFE still never reads storage.
+- **Provision the counter index with `no_da`.** With an empty authValue, dictionary-attack protection adds nothing, but after an unclean shutdown it returns `TPM_RC_LOCKOUT` (0x921) to the controller's `NV_Read`, which silently degrades the boot to the CURRENT-only path. The test provisions `nt=counter|ownerwrite|authread|ownerread|no_da`.
+- `scripts/prepare-epoch-transition.sh` still looked for Limine under `third_party/limine/`; it now uses the pinned build in `third_party/limine-bin`.
+
 ## Still not run
 
-- Full trusted chain in QEMU: UEFI boot controller → recovery journal attempt → Limine staged/committed config, with the swtpm NV counter (epoch floor / commit).
-- Physical X79/iTCO/e1000 hardware.
+- STAGED counter (cross-epoch transition with a real LKG one-shot), no-TPM and Secure-Boot-off fallbacks in the trusted chain.
+- Physical X79/iTCO/e1000 hardware and real TPM chips.

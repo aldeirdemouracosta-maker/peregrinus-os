@@ -18,6 +18,7 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 - Regressão completa: `make check` (deve terminar com código 0)
 - Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`
 - Boot real no QEMU/OVMF: `make qemu-boot-test` (precisa de qemu-system-x86, ovmf, xorriso, nasm, mtools)
+- Cadeia confiável completa (Secure Boot + TPM): `make qemu-trusted-chain-test` (também swtpm, tpm2-tools, sbsigntool, dosfstools)
 - Limpeza: `make clean`
 
 ## Convenções

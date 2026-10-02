@@ -9,7 +9,8 @@ fi
 
 need=()
 for pair in clang:clang lld:ld.lld llvm:llvm-objcopy python3:python3 make:make \
-            qemu-system-x86:qemu-system-x86_64 xorriso:xorriso nasm:nasm mtools:mcopy; do
+            qemu-system-x86:qemu-system-x86_64 xorriso:xorriso nasm:nasm mtools:mcopy \
+            dosfstools:mkfs.fat swtpm:swtpm tpm2-tools:tpm2_nvdefine sbsigntool:sbsign; do
   pkg=${pair%%:*}; bin=${pair#*:}
   command -v "$bin" >/dev/null 2>&1 || need+=("$pkg")
 done
