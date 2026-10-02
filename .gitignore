@@ -1,0 +1,5 @@
+# Saídas de build (Makefile: build/ e build-*/)
+/build/
+/build-*/
+*.o
+__pycache__/
