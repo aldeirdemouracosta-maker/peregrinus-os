@@ -38,6 +38,9 @@ inline constexpr size_t buffer_bytes = 2048;
 bool rx_complete(const RxDescriptor& d);
 bool rx_frame_valid(const RxDescriptor& d);
 size_t ring_next(size_t index);
+// Bounded wait for TX descriptor-done. Reads status as volatile (DMA-written)
+// and returns false once the spin budget is exhausted.
+bool tx_wait_done(const TxDescriptor& d, uint32_t spin_budget);
 bool model_self_test();
 
 }

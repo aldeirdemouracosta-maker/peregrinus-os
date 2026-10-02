@@ -171,9 +171,7 @@ size_t Driver::poll_rx(RxConsumer consumer, void* context, size_t budget) {
 bool Driver::transmit(const uint8_t* frame, size_t bytes) {
     if (!ready_ || !frame || bytes < 14 || bytes > 1514) return false;
     TxDescriptor& d = tx_ring_[tx_next_];
-    uint32_t spins = 100000;
-    while ((d.status & tx_status_dd) == 0 && spins--) asm volatile("pause");
-    if (!spins) { ++stats_.tx_failures; return false; }
+    if (!tx_wait_done(d, 100000)) { ++stats_.tx_failures; return false; }
     for (size_t i = 0; i < bytes; ++i) tx_buffers_[tx_next_][i] = frame[i];
     d.length = static_cast<uint16_t>(bytes);
     d.cso = 0;
@@ -184,9 +182,7 @@ bool Driver::transmit(const uint8_t* frame, size_t bytes) {
     asm volatile("mfence" ::: "memory");
     const size_t next = ring_next(tx_next_);
     reg_write(REG_TDT, static_cast<uint32_t>(next));
-    spins = 500000;
-    while ((d.status & tx_status_dd) == 0 && spins--) asm volatile("pause");
-    if (!spins) { ++stats_.tx_failures; return false; }
+    if (!tx_wait_done(d, 500000)) { ++stats_.tx_failures; return false; }
     tx_next_ = next;
     ++stats_.tx_frames;
     return true;

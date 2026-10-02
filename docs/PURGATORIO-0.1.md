@@ -12,3 +12,7 @@ Scope: bounded in-memory component quarantine, identity keyed by component ID wi
 
 ## Why this is intentionally small
 The current Peregrinus kernel has no mature filesystem/process loader. A larger quarantine subsystem would be decorative and unsafe. This phase establishes the admission primitive that later loaders can call.
+
+## 0.1 review fixes
+- component ID `0` is invalid: `quarantine(0, …)` is rejected and counted (`rejected_invalid()`) instead of poisoning the whole registry; `admit(0, …)` returns `DENY-INVALID-ID`;
+- a conflicting digest for an already-quarantined ID keeps the original digest and also records the conflicting one (`digest_conflict`, `conflict_digest`) as evidence.

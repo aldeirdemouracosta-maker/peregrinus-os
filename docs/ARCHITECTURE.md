@@ -9,3 +9,9 @@ The project remains layered so that security-sensitive state is not mixed with e
 5. **NIC qualification** — e1000 polling RX/TX exists only behind `PEREGRINUS_QEMU_E1000_SANDBOX=1`.
 
 The production SAFE image intentionally stops at layer 4 and never takes NIC ownership. This preserves a small attack surface while the qualification image can exercise the hardware-facing code independently.
+
+## Integrity manifest scope (clarification)
+The embedded `.peregrinus_integrity` manifest is an unkeyed SHA-256 of `.text` stored inside the same ELF. It detects corruption and accidental modification, not a deliberate attacker, who can re-run `scripts/seal-kernel.py`. Authenticity comes from the Secure Boot → trusted boot controller → pinned Limine config hash chain. `.rodata`/`.data` are not covered by the manifest.
+
+## Toolchain reproducibility
+The Makefile pins tool *names* (`clang++`, `ld.lld`), not versions. Different clang releases produce different `.text` and therefore different seals; reproducible artifacts require a pinned toolchain (see the CI suggestion in the project review).
