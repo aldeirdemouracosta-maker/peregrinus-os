@@ -1,0 +1,6 @@
+Peregrinus OS — código original do projeto
+Copyright (c) 2026. Todos os direitos reservados.
+
+Este arquivo é provisório e NÃO concede licença de redistribuição, modificação ou uso comercial.
+Componentes de terceiros permanecem sujeitos às suas próprias licenças.
+Antes de uma distribuição pública, revisar e substituir este aviso pela licença definitiva escolhida pelo titular.
