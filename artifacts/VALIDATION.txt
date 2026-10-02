@@ -1,3 +1,8 @@
+SUPERSEDED: the binaries in this directory predate the review fixes (e1000 TX
+timeout, Purgatorio ID-0 handling, e1000 + read-only disk profile). Do not use
+them. Current binaries come from CI (workflow artifacts / GitHub Releases), and
+the QEMU runtime items below are now covered by docs/QEMU-BOOT-QUALIFICATION.md.
+
 Peregrinus OS — Purgatorio 0.1 validation
 
 PASS: make check (full Noe/Jo/Muro regression + Purgatorio quarantine test)

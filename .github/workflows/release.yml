@@ -1,0 +1,52 @@
+name: release
+
+# Publishing a tag (e.g. v0.1.1) builds every profile from source, runs the
+# full regression and boot qualification, and attaches the binaries plus
+# SHA-256 sums to a GitHub Release. Binaries are never committed to git.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Instalar toolchain, QEMU e OVMF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 python3 \
+            qemu-system-x86 ovmf xorriso nasm mtools make
+          sudo ln -sf /usr/bin/clang-18 /usr/local/bin/clang
+          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
+          sudo ln -sf /usr/bin/ld.lld-18 /usr/local/bin/ld.lld
+          sudo ln -sf /usr/bin/lld-link-18 /usr/local/bin/lld-link
+          for t in objcopy objdump nm readelf; do sudo ln -sf /usr/bin/llvm-$t-18 /usr/local/bin/llvm-$t; done
+      - name: Regressão e qualificação em boot
+        run: |
+          make check
+          make qemu-boot-test
+      - name: Montar binários
+        run: |
+          set -euo pipefail
+          TAG=${GITHUB_REF_NAME}
+          mkdir -p dist
+          make current-recovery-live trusted-boot-controller
+          cp build/peregrinus.elf                              dist/peregrinus-$TAG-safe.elf
+          cp build-current-recovery-live/peregrinus.elf        dist/peregrinus-$TAG-recovery-live.elf
+          cp build-qemu-e1000/peregrinus.elf                   dist/peregrinus-$TAG-e1000-qemu-qualification.elf
+          cp build-bootctl/peregrinus-boot-controller.efi      dist/peregrinus-$TAG-boot-controller-safe.efi
+          cp build/peregrinus-safe.iso                         dist/peregrinus-$TAG-safe.iso
+          { clang --version | head -1; ld.lld --version; } > dist/TOOLCHAIN.txt
+          git ls-files -z | xargs -0 sha256sum > dist/SOURCE_SHA256SUMS
+          (cd dist && sha256sum peregrinus-* TOOLCHAIN.txt SOURCE_SHA256SUMS > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --title "Peregrinus OS $GITHUB_REF_NAME" \
+            --notes "Binários gerados pelo CI a partir de ${GITHUB_SHA}. Qualificação: make check + make qemu-boot-test (safe, disk, e1000, journal, commit). Verifique com: sha256sum -c SHA256SUMS"

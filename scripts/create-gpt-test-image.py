@@ -30,7 +30,7 @@ def put_entry(entries, idx, type_guid, unique_guid, first, last, name):
 
 def main():
     ap=argparse.ArgumentParser(description='Create disposable GPT image for Peregrinus OS Muro 1.0.1 Hardened recovery test')
-    ap.add_argument('path', nargs='?', default='build/peregrinus-jo-1.0-testdisk.img')
+    ap.add_argument('path', nargs='?', default='build/peregrinus-testdisk.img')
     ap.add_argument('--mib', type=int, default=64)
     ap.add_argument('--pending-current-attempt', action='store_true',
                     help='journal copy A records a pending CURRENT boot attempt, as the trusted pre-boot controller would')

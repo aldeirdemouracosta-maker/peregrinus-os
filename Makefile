@@ -137,8 +137,8 @@ dma-test-kernel:
 	$(MAKE) BUILD=build-qemu-dma EXTRA_CPPFLAGS=-DPEREGRINUS_QEMU_DMA_TEST=1 all
 
 qemu-test-disk:
-	./scripts/create-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
-	./scripts/verify-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
+	./scripts/create-gpt-test-image.py build/peregrinus-testdisk.img
+	./scripts/verify-gpt-test-image.py build/peregrinus-testdisk.img
 
 current-slot:
 	$(MAKE) BUILD=build-current SEAL_LABEL=$(RELEASE_TAG)-CURRENT EXTRA_CPPFLAGS="-DPEREGRINUS_SLOT_CURRENT=1" all

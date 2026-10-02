@@ -24,7 +24,7 @@ A separate **QEMU e1000 qualification profile** contains the live datapath. It i
 
 ## Explicit non-goals in 1.0
 
-No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU/qualification until runtime testing is performed.
+No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU/qualification only; its QEMU runtime (ARP, ICMP echo, UDP default-deny on the wire) is verified by `make qemu-boot-test`, physical NICs remain untested.
 
 See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and the historical `docs/LEAN-AUDIT.md`.
 

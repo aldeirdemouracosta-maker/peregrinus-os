@@ -17,7 +17,7 @@ cd "$ROOT"
 PROFILE=${1:?usage: $0 safe|disk|e1000|journal|commit}
 TIMEOUT=${QEMU_BOOT_TIMEOUT:-120}
 OUT=${QEMU_BOOT_OUT:-build-boot-test}
-BASE_DISK=build/peregrinus-muro-1.0.1-testdisk.img
+BASE_DISK=build/peregrinus-testdisk.img
 mkdir -p "$OUT"
 
 OVMF_CODE=""; OVMF_VARS=""
@@ -96,7 +96,7 @@ case "$PROFILE" in
             'NIC probe: read-only; BAR/MMIO/DMA/interrupt setup BLOCKED'
             'Boot health: UNAVAILABLE' 'PEREGRINUS GUARD: fail-closed halt.')
     FORBID=("${STD_FORBID[@]}")
-    boot nodisk build/peregrinus-muro-1.0-safe.iso none
+    boot nodisk build/peregrinus-safe.iso none
     ;;
   disk)
     ./scripts/make-iso.sh dma-test >"$OUT/$PROFILE-iso.log" 2>&1 || { cat "$OUT/$PROFILE-iso.log"; exit 1; }
@@ -107,7 +107,7 @@ case "$PROFILE" in
             'Peregrinus Guard action: BOOT-READONLY'
             'live NIC ownership remains BLOCKED')
     FORBID=("${STD_FORBID[@]}")
-    boot readonly build-qemu-dma/peregrinus-muro-1.0-qemu-dma.iso ro "$BASE_DISK"
+    boot readonly build-qemu-dma/peregrinus-dma-test.iso ro "$BASE_DISK"
     [ "$(disk_sha "$BASE_DISK")" = "$before" ] || { echo "  read-only profile modified the disk image"; FAIL=1; }
     ;;
   e1000)
@@ -117,7 +117,7 @@ case "$PROFILE" in
             'e1000 sandbox: RX/TX polling rings READY; interrupts disabled'
             'Muro e1000 sandbox init: READY')
     FORBID=("${STD_FORBID[@]}")
-    boot net build-qemu-e1000/peregrinus-muro-1.0-e1000-sandbox.iso ro "$BASE_DISK" \
+    boot net build-qemu-e1000/peregrinus-e1000.iso ro "$BASE_DISK" \
       "${QEMU_NET_PORT:-$((20000 + RANDOM % 20000))}"
     ;;
   journal)
@@ -130,13 +130,13 @@ case "$PROFILE" in
     FORBID=("${STD_FORBID[@]}" 'SPLIT-BRAIN')
     for n in 1 2; do
       before=$(disk_sha "$DISK")
-      boot "boot$n" build-recovery-journal-test/peregrinus-recovery-journal-test.iso rw "$DISK"
+      boot "boot$n" build-recovery-journal-test/peregrinus-journal.iso rw "$DISK"
       [ "$(disk_sha "$DISK")" != "$before" ] || { echo "  boot$n did not persist the journal transaction"; FAIL=1; }
     done
     ;;
   commit)
     ./scripts/make-iso.sh commit >"$OUT/$PROFILE-iso.log" 2>&1 || { cat "$OUT/$PROFILE-iso.log"; exit 1; }
-    ISO=build-recovery-commit-test/peregrinus-recovery-commit-test.iso
+    ISO=build-recovery-commit-test/peregrinus-commit.iso
     DISK="$OUT/commit-disk.img"
     ./scripts/create-gpt-test-image.py --pending-current-attempt "$DISK" >/dev/null
     # 1. Pending attempt recorded by pre-boot: the kernel confirms success.
