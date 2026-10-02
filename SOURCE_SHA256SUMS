@@ -1,6 +1,6 @@
 ccf5f91886edd2835aa7c34db0dcec4c3c8ecb74f3dd7c7e9dba20d87485f02c  ./LICENSE-PROJECT.txt
-7549c3c5a41cb0681cf5aa84f766412b482bff27f6dcccf4190dee9792eecc09  ./Makefile
-54ff75d3f62d5d56f16e78d05651dae0397a81509c2afec38033262974314656  ./README.md
+406d763feacfbfbd977afeec059f581796ec35e4b046856310ef371c8b2a4f16  ./Makefile
+a064d730a7d909dbbefc678ba76248817fa875cbfde8b2046caf3d47bd1dfd67  ./README.md
 fef25cf6ae4feeb03721f6cbd838ded35a7b5f14d76fbf54e8821478cec25ded  ./THIRD_PARTY_LOCK.md
 b25cac6b53e36ee1610e389cb0106a7167b5f560b0f310f3b23d90f16ef3a989  ./THIRD_PARTY_NOTICES.md
 774704e65cf6600cf9e62040d35b6e38e9019d9c69af33fc6dd619ebe43e81df  ./bootctl/common/boot_request.h
@@ -18,6 +18,7 @@ dfa083811e42b2eb0150650bad0749765c59c584aa0370716b37868d9f992058  ./docs/MURO-0.
 e0b2ec68589b3497462c76f405d5a989e490e820b3f34963182b4d53e0c4c257  ./docs/MURO-1.0.md
 b772954a7c578191f721e99462d3256cd1cb9799098c7fd6e0f2729f39e0b12c  ./docs/PROJECT-REVIEW-2026-10-02.md
 9433b6720e8d7bca05777d82b30e974845973f021e14e050522c2e18bf5f24d2  ./docs/PURGATORIO-0.1.md
+a5dafae09babaa31eec43edeba746881043f2fca0b0350dce9fe3a2e54d02f4d  ./docs/QEMU-BOOT-QUALIFICATION.md
 73ff98036589e57a06b5263199427a4b63796066e7a313462aa161b2a28c5bda  ./include/peregrinus/io.hpp
 bc60fe518f5d8f6561372d0f7469ceb3bf495760939b64b3bf70af332a1ca350  ./include/peregrinus/recovery_journal.h
 cf16704da57485b15f296029de7101aa81e0490f5d69efb24536b555be395e6a  ./include/peregrinus/release_profile.h
@@ -34,7 +35,7 @@ feb8bdbd2eaa46fbdb6f7e9f6626216c62406d93179c47ec1f5c5d6e3f3d8d0f  ./kernel/arch/
 6989fb5cf9551b1f75c4f7d5a3f13c83ec514a5197fec4d456534881e4274391  ./kernel/arch/x86_64/isr.S
 78f2ad69cb882d822396d644f3fb41146805fa04c2c987b2aa7951ec9d0ac31d  ./kernel/boot/limine_requests.cpp
 9c347e520fe3643a25328d31ddcc87e87d2ea7cdc905e77de81cdc5685356e00  ./kernel/boot/limine_requests.hpp
-51858d4a73d1846e2ec2089b5d79b8d7e7ae94064fba16ae2d3f07e3c5dd4cdf  ./kernel/config/features.hpp
+e31ecbf0ffe0a6b15ca825dfe8af57128837928604a69d7f18d32417e1940f92  ./kernel/config/features.hpp
 cf72494fe739d6fe7f57dcb35f882d8d43d6c7c3db803b8494eab305bc0422ca  ./kernel/console/format.cpp
 1fce443d5f9e3ae40c37095a41624f3c12bbef658c2bca7964e8ebf297f930e9  ./kernel/console/format.hpp
 834e6e5a72b714e0156147895776b789f5efbb582456b9882f32810cb2e44345  ./kernel/console/framebuffer.cpp
@@ -123,13 +124,14 @@ dd68ae804e53b79e32d01e85b30415b68f26a5e9e7f380216840cf0e76894e2e  ./lkg-referenc
 ca2adc50991203930a76ffe242cf2261413c8862e39a13e9ae94a079265682ba  ./scripts/build-trusted-boot-controller.sh
 f5d1ddc2d1d8e4ca7e08cb22b0dfd4c5c741b3628417949977e0deb282dc5a6c  ./scripts/commit-tpm-epoch.sh
 f6508bd2ac626e831dbc5630ca178198dd84f3f6a017d350af5abda5b261a8e0  ./scripts/create-gpt-test-image.py
-83a6da317d657bc7ef7382f2ef9452424dce10b5c0e72797fa471046225cea60  ./scripts/fetch-limine.sh
+b594b370d61c3a6416ed47b64c4dc568849098cac2fd29d13887aa8d271b7803  ./scripts/fetch-limine.sh
 4770136c6bcab1abed51924b22356d91f4c057a6c11ee2ee201dc3a7b86dd58d  ./scripts/generate-epoch-configs.py
 7ae7848af788435edbdd160ccb6e1ce9984b0a4d57feebdb8352c051fecedcb2  ./scripts/inspect-tpm-anchor.sh
 e6618b50144c47ebd303dea09eb3b1ca349cfc800c9152773705f433eab1285a  ./scripts/make-boot-request.py
-2cb569da49e4f1df5dd11e26b47d0699f940607be7094199b6d1dd38a61f332d  ./scripts/make-iso.sh
+d235695b0c7948902a70d8fe4201fe7275818a3cd659ad893d9169a24733b793  ./scripts/make-iso.sh
 6be89b47707e7c4057f4ebb99caac87fb23737c761841fb5405d0a34d4e23a26  ./scripts/prepare-epoch-transition.sh
 1cb92a16f158cc061ce92fd951100d8a35dae55b5d6ee84aef6e7571999307e4  ./scripts/prepare-secure-boot.sh
+6517db208170e68837085e2275ae9e35f22aa8b2053c363efd856e90ab452702  ./scripts/qemu-boot-test.sh
 7b865ea93c9fba7999b68f853a991f92ed01e687c4f432418a3f6a2ac715ef02  ./scripts/release-profile.py
 8e6b7d2a304b0b18e40cee074829e2f3b60c521e03255ba61db39b8e00d7741c  ./scripts/run-qemu.sh
 110be250b061876c11f9b0d29b79545d9f221238d4ba95904a03f47e9c70f1d9  ./scripts/seal-kernel.py
@@ -158,6 +160,7 @@ ae3e7411d9f136bb79c5c08c77a3ef7f39458a0da95b6b413c842658ce259d7f  ./tests/muro_r
 9d5dc36a5bf0f6906176118a72be456aa9c93a36ffae25b196ee88b8ddd697f5  ./tests/preboot_controller_binary.sh
 b26877dec5507e075a826f8c1a374c87e3620bae803957841d5ac1c64d1dbcb9  ./tests/preboot_recovery.sh
 313543ed9e0019fc5eb94778fc32fc4acab38454153d4464a66b8e86e92582bd  ./tests/preboot_recovery_test.c
+d36fa59c2c5af82c7337b95a161dbd2118bae84e92da7d18f50d32b318d114dd  ./tests/qemu_net_peer.py
 b4716355f61ec0e9b01620eb7fa72c97bd76ee21fdd2923a08341f368d8c1cdf  ./tests/quarantine.sh
 a56e8064bbdf383ea07ea447b142997fcd501f6d9586928e955d6e1b3c4ddc10  ./tests/quarantine_test.cpp
 5a5739bd033ad2a3b1fc725cb3974de0d6a3b1bab6fab3e9c6285fcca0073ece  ./tests/recovery_anchor.sh

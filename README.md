@@ -41,3 +41,8 @@ See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and
 ## Purgatório 0.1
 
 Purgatório 0.1 adds a bounded in-memory component quarantine/admission gate. It does **not** claim antivirus scanning, filesystem relocation, process isolation, or persistent quarantine. Components can be denied by identity after an integrity/signature/policy/malformed/manual-hold event. The registry is fixed at 32 entries; saturation fails closed for optional component admission. There is deliberately no runtime release/unquarantine API in this phase.
+
+
+## QEMU boot qualification
+
+`make qemu-boot-test` boots SAFE, read-only disk and e1000 profiles in QEMU/OVMF and checks the serial log; the e1000 run also answers ARP/ICMP and drops non-allowlisted UDP on the wire. See `docs/QEMU-BOOT-QUALIFICATION.md`.
