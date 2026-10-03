@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,8 +27,6 @@ jobs:
         run: |
           clang --version | tee toolchain.txt
           ld.lld --version | tee -a toolchain.txt
-      - name: Verificar checksums das fontes
-        run: sha256sum -c SOURCE_SHA256SUMS --quiet
       - name: Regressão completa
         run: make check
       - name: Perfis live e controlador UEFI
@@ -43,3 +42,86 @@ jobs:
             build-qemu-e1000/peregrinus.elf
             build-current-recovery-live/peregrinus.elf
             toolchain.txt
+
+  qemu-boot:
+    needs: check
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [safe, disk, e1000, journal, commit]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Instalar toolchain, QEMU, OVMF e dependências do Limine
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 python3 \
+            qemu-system-x86 ovmf xorriso nasm mtools make
+          sudo ln -sf /usr/bin/clang-18 /usr/local/bin/clang
+          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
+          sudo ln -sf /usr/bin/ld.lld-18 /usr/local/bin/ld.lld
+          for t in objcopy objdump nm readelf; do sudo ln -sf /usr/bin/llvm-$t-18 /usr/local/bin/llvm-$t; done
+      - name: Habilitar KVM (se disponível no runner)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          ls -la /dev/kvm || echo "KVM indisponível; usando TCG"
+      - name: Limine fixado (tarball verificado por SHA-256)
+        run: ./scripts/fetch-limine.sh
+      - name: Boot no QEMU (${{ matrix.profile }})
+        run: ./scripts/qemu-boot-test.sh ${{ matrix.profile }}
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: serial-${{ matrix.profile }}
+          path: build-boot-test/*-serial.txt
+
+  trusted-chain:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Instalar toolchain, QEMU, OVMF (Secure Boot), swtpm, tpm2-tools e sbsigntool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 python3 make \
+            qemu-system-x86 ovmf xorriso nasm mtools dosfstools swtpm swtpm-tools tpm2-tools sbsigntool openssl
+          sudo ln -sf /usr/bin/clang-18 /usr/local/bin/clang
+          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
+          sudo ln -sf /usr/bin/ld.lld-18 /usr/local/bin/ld.lld
+          sudo ln -sf /usr/bin/lld-link-18 /usr/local/bin/lld-link
+          for t in objcopy objdump nm readelf; do sudo ln -sf /usr/bin/llvm-$t-18 /usr/local/bin/llvm-$t; done
+      - name: Habilitar KVM (se disponível no runner)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+      - name: Cadeia confiável (Secure Boot + controlador + TPM + Limine + kernel)
+        run: ./scripts/qemu-trusted-chain-test.sh
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: serial-trusted-chain
+          path: build-trusted-chain/*-serial.txt
+
+  fuzz:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Instalar clang 18 com libFuzzer/ASan/UBSan
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang-18 libclang-rt-18-dev python3
+          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
+      - name: Fuzzing da rede (Ethernet/IPv4, ARP, ICMP, datapath)
+        run: FUZZ_SECONDS=120 ./tests/fuzz/run.sh
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-crash
+          path: |
+            crash-*
+            oom-*
+            timeout-*

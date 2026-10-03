@@ -46,3 +46,7 @@ A base segue coerente e toda a regressão host-side passa com clang/ld.lld, `-We
 ## Veredito técnico
 
 Não há razão para reiniciar a arquitetura. O projeto está mais saudável quando mantém três perfis separados: SAFE, RECOVERY-LIVE/qualification e e1000-QEMU/qualification. A prioridade seguinte deve ser runtime qualification, não adicionar mais subsistemas grandes.
+
+## Atualização posterior
+
+As pendências 1 (parcial) e 5 foram atendidas: boot/runtime QEMU + OVMF dos perfis safe, disk, e1000, journal e commit roda no CI (`docs/QEMU-BOOT-QUALIFICATION.md`), com toolchain LLVM 18 registrada. Continuam pendentes: OVMF + swtpm (cadeia confiável completa), recovery-live em disco físico, iTCO em X79 real.

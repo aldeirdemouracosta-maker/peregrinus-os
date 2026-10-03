@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import binascii, os, struct, sys, re
 from pathlib import Path
-p=sys.argv[1] if len(sys.argv)>1 else 'build/peregrinus-jo-1.0-testdisk.img'
+p=sys.argv[1] if len(sys.argv)>1 else 'build/peregrinus-testdisk.img'
 SECTOR=512
 PROFILE=(Path(__file__).resolve().parents[1]/'include/peregrinus/release_profile.h').read_text()
 def profile_num(name):

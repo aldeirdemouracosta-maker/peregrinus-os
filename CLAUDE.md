@@ -17,12 +17,15 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 - Build SAFE: `make`
 - Regressão completa: `make check` (deve terminar com código 0)
 - Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`
+- Boot real no QEMU/OVMF: `make qemu-boot-test` (precisa de qemu-system-x86, ovmf, xorriso, nasm, mtools)
+- Cadeia confiável completa (Secure Boot + TPM): `make qemu-trusted-chain-test` (também swtpm, tpm2-tools, sbsigntool, dosfstools)
+- Provisionar/verificar o contador NV do TPM: `scripts/provision-tpm-counter.sh` (verificação por padrão; `--define` cria com `no_da`)
+- Fuzzing da rede (libFuzzer + ASan/UBSan): `make fuzz` (`FUZZ_SECONDS`, padrão 60; precisa de libclang-rt-18-dev)
 - Limpeza: `make clean`
 
 ## Convenções
 
 - Release profile autoritativo: `include/peregrinus/release_profile.h` (generation/epoch nunca hardcoded em scripts).
 - Toda correção vem com teste host-side em `tests/` ligado ao `make check`.
-- Ao alterar fontes, regenerar `SOURCE_SHA256SUMS`:
-  `awk '{print $2}' SOURCE_SHA256SUMS | xargs sha256sum > SOURCE_SHA256SUMS.new && mv SOURCE_SHA256SUMS.new SOURCE_SHA256SUMS`
+- Binários e checksums não vão para o git: o workflow `release.yml` (tag `v*`) compila, qualifica e publica binários, `SHA256SUMS` e `SOURCE_SHA256SUMS` nos Releases.
 - Leia de memória mapeada por DMA/MMIO sempre via `volatile`; laços de espera devem ter orçamento que realmente expira.

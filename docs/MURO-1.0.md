@@ -50,4 +50,4 @@ The final datapath owns a 128-entry audit ring recording parse rejection, explic
 
 Muro 1.0 baseline was CURRENT generation 21 / epoch 3 with historical LKG generation 12 / epoch 3. Muro 1.0.1 advances LKG to the real Muro 1.0 generation 21 image. No security-epoch transition is performed.
 
-The SAFE build is the distributable default. The e1000 profile is a qualification artifact and must not be described as runtime-tested until QEMU/OVMF execution succeeds.
+The SAFE build is the distributable default. The e1000 profile is a qualification artifact. Update: QEMU/OVMF execution now succeeds and is checked in CI (`docs/QEMU-BOOT-QUALIFICATION.md`); physical hardware remains untested.

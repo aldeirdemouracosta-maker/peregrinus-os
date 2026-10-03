@@ -40,7 +40,11 @@ static void report_table(Result& r,const gpt::TableInfo& t){
 
 Result run_qemu_gpt_probe(){
     Result r{}; g_table={}; g_table_valid=false;
-    if(!features::ahci_dma_read_live || !features::disposable_qemu_disk_only){ serial::writeln("Noe 1.0 redundant GPT probe: SKIPPED (safe default build)"); return r; }
+    // Read-only GPT probe uses the same gate as the recovery anchor/journal
+    // readers: disposable QEMU disks or the recovery-commit-live profile. Gating
+    // it on disposable disks alone left recovery-live without boot health, so
+    // the Guard always halted before the boot-success commit.
+    if(!features::ahci_dma_read_live || !features::recovery_metadata_live){ serial::writeln("Noe 1.0 redundant GPT probe: SKIPPED (safe default build)"); return r; }
     r.attempted=true;
     if(storage::inventory().count==0){ serial::writeln("Noe 1.0 redundant GPT probe: no storage device"); return r; }
     const auto& dev=storage::inventory().devices[0]; r.device_identified=dev.identified; r.logical_sector_bytes=dev.info.logical_sector_bytes; r.device_last_lba=dev.info.last_lba;

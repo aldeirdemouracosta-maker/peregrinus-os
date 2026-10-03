@@ -24,7 +24,7 @@ A separate **QEMU e1000 qualification profile** contains the live datapath. It i
 
 ## Explicit non-goals in 1.0
 
-No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU/qualification until runtime testing is performed.
+No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU/qualification only; its QEMU runtime (ARP, ICMP echo, UDP default-deny on the wire) is verified by `make qemu-boot-test`, physical NICs remain untested.
 
 See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and the historical `docs/LEAN-AUDIT.md`.
 
@@ -41,3 +41,12 @@ See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and
 ## Purgatório 0.1
 
 Purgatório 0.1 adds a bounded in-memory component quarantine/admission gate. It does **not** claim antivirus scanning, filesystem relocation, process isolation, or persistent quarantine. Components can be denied by identity after an integrity/signature/policy/malformed/manual-hold event. The registry is fixed at 32 entries; saturation fails closed for optional component admission. There is deliberately no runtime release/unquarantine API in this phase.
+
+
+## QEMU boot qualification
+
+`make qemu-boot-test` boots SAFE, read-only disk and e1000 profiles in QEMU/OVMF and checks the serial log; the e1000 run also answers ARP/ICMP and drops non-allowlisted UDP on the wire. See `docs/QEMU-BOOT-QUALIFICATION.md`.
+
+## Network fuzzing
+
+`make fuzz` runs a libFuzzer + ASan/UBSan harness over the Ethernet/IPv4 parser, ARP, the ICMP echo-reply builder and the stateful datapath. Besides memory safety it checks that every ARP/ICMP reply the kernel would send is itself a valid frame. CI runs it for 120 s per change.

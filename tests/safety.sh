@@ -92,4 +92,6 @@ grep -q 'dhcp_live=false' "$FEATURES"
 grep -q 'Reason::default_deny' "$ROOT/kernel/security/firewall.cpp"
 grep -q 'fragment_unsupported' "$ROOT/kernel/security/firewall.cpp"
 forbid_grep 'io::out|io::in' "$ROOT/kernel/net"
+# recovery-live must be able to read GPT (read-only) or it can never reach boot health.
+grep -q 'ahci_dma_read_live || !features::recovery_metadata_live' "$ROOT/kernel/storage/disk_probe.cpp"
 echo 'PASS: Muro 1.0.1 SAFE gates verified; live e1000 code exists only behind explicit qualification macro.'

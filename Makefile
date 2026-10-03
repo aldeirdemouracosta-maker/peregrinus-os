@@ -137,8 +137,8 @@ dma-test-kernel:
 	$(MAKE) BUILD=build-qemu-dma EXTRA_CPPFLAGS=-DPEREGRINUS_QEMU_DMA_TEST=1 all
 
 qemu-test-disk:
-	./scripts/create-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
-	./scripts/verify-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
+	./scripts/create-gpt-test-image.py build/peregrinus-testdisk.img
+	./scripts/verify-gpt-test-image.py build/peregrinus-testdisk.img
 
 current-slot:
 	$(MAKE) BUILD=build-current SEAL_LABEL=$(RELEASE_TAG)-CURRENT EXTRA_CPPFLAGS="-DPEREGRINUS_SLOT_CURRENT=1" all
@@ -183,7 +183,21 @@ recovery-live-slots: current-recovery-live lkg-recovery-live
 	./scripts/verify-epoch-configs.py --staged build-recovery-live-secure/boot/limine/limine-staged.conf --committed build-recovery-live-secure/boot/limine/limine-committed.conf --root build-recovery-live-secure --committed-lkg
 
 
-qemu-e1000-sandbox:
-	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
+qemu-boot-test:
+	./scripts/fetch-limine.sh
+	./scripts/qemu-boot-test.sh safe
+	./scripts/qemu-boot-test.sh disk
+	./scripts/qemu-boot-test.sh e1000
+	./scripts/qemu-boot-test.sh journal
+	./scripts/qemu-boot-test.sh commit
 
-.PHONY: all clean check iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
+fuzz:
+	./tests/fuzz/run.sh
+
+qemu-trusted-chain-test:
+	./scripts/qemu-trusted-chain-test.sh
+
+qemu-e1000-sandbox:
+	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_QEMU_DMA_TEST=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
+
+.PHONY: all clean check iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox qemu-boot-test qemu-trusted-chain-test fuzz

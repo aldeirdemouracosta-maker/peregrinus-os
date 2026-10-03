@@ -3,9 +3,11 @@
 // The distributed build keeps all physical journal writes disabled. The only
 // admitted persistent write path is the two-sector IA_RECOVERY journal commit,
 // enabled explicitly for QEMU testing or hardware qualification.
+// The read-only disposable-disk profile (PEREGRINUS_QEMU_DMA_TEST) is allowed
+// with e1000: without a verified GPT/recovery anchor the Guard halts fail-closed
+// before the NIC datapath, so e1000 qualification needs read-only boot health.
 #if ((defined(PEREGRINUS_QEMU_E1000_SANDBOX) && PEREGRINUS_QEMU_E1000_SANDBOX == 1) && \
-     ((defined(PEREGRINUS_QEMU_DMA_TEST) && PEREGRINUS_QEMU_DMA_TEST == 1) || \
-      (defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
+     ((defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
       (defined(PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST) && PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST == 1) || \
       (defined(PEREGRINUS_RECOVERY_COMMIT_LIVE) && PEREGRINUS_RECOVERY_COMMIT_LIVE == 1)))
 #error "Peregrinus: e1000 qualification and storage-write qualification profiles are mutually exclusive"

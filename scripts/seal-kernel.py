@@ -4,7 +4,7 @@ import hashlib, os, shutil, struct, subprocess, sys, tempfile
 if len(sys.argv) < 2:
     raise SystemExit("usage: seal-kernel.py <elf> [label]")
 elf=sys.argv[1]
-label=(sys.argv[2] if len(sys.argv)>2 else "JO-0.7")[:31]
+label=(sys.argv[2] if len(sys.argv)>2 else "UNLABELED")[:31]
 objcopy=shutil.which("llvm-objcopy") or shutil.which("objcopy")
 if not objcopy:
     raise SystemExit("objcopy/llvm-objcopy not found")

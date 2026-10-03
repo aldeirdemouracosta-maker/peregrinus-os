@@ -30,8 +30,12 @@ def put_entry(entries, idx, type_guid, unique_guid, first, last, name):
 
 def main():
     ap=argparse.ArgumentParser(description='Create disposable GPT image for Peregrinus OS Muro 1.0.1 Hardened recovery test')
-    ap.add_argument('path', nargs='?', default='build/peregrinus-jo-1.0-testdisk.img')
+    ap.add_argument('path', nargs='?', default='build/peregrinus-testdisk.img')
     ap.add_argument('--mib', type=int, default=64)
+    ap.add_argument('--pending-current-attempt', action='store_true',
+                    help='journal copy A records a pending CURRENT boot attempt, as the trusted pre-boot controller would')
+    ap.add_argument('--esp-mib', type=int, default=0,
+                    help='append an EFI System Partition of this size after IA_DATA (left unformatted; caller fills it)')
     a=ap.parse_args()
     size=a.mib*1024*1024
     total=size//SECTOR
@@ -49,9 +53,14 @@ def main():
     type_guid=uuid.UUID('0fc63daf-8483-4772-8e79-3d69d8477de4')
     first_usable=34
     last_usable=total-34
+    esp_sectors=a.esp_mib*1024*1024//SECTOR
+    data_last=last_usable-esp_sectors
+    if data_last<=49152+2048: raise SystemExit('ESP too large for this image size')
     put_entry(entries,0,type_guid,uuid.UUID('11111111-1111-4111-8111-111111111111'),2048,32767,'IA_SYSTEM')
     put_entry(entries,1,type_guid,uuid.UUID('22222222-2222-4222-8222-222222222222'),32768,49151,'IA_RECOVERY')
-    put_entry(entries,2,type_guid,uuid.UUID('33333333-3333-4333-8333-333333333333'),49152,last_usable,'IA_DATA')
+    put_entry(entries,2,type_guid,uuid.UUID('33333333-3333-4333-8333-333333333333'),49152,data_last,'IA_DATA')
+    if esp_sectors:
+        put_entry(entries,3,uuid.UUID('c12a7328-f81f-11d2-ba4b-00a0c93ec93b'),uuid.UUID('44444444-4444-4444-8444-444444444444'),data_last+1,last_usable,'EFI')
     ecrc=crc32(entries)
     disk_guid=uuid.UUID('01234567-89ab-cdef-0123-456789abcdef')
 
@@ -78,7 +87,7 @@ def main():
         h[56:72]=guid_le(uuid.UUID('22222222-2222-4222-8222-222222222222'))
         h[72:88]=guid_le(uuid.UUID('11111111-1111-4111-8111-111111111111'))
         h[88:104]=guid_le(uuid.UUID('33333333-3333-4333-8333-333333333333'))
-        struct.pack_into('<QQQQQQ',h,104,2048,32767,32768,49151,49152,last_usable)
+        struct.pack_into('<QQQQQQ',h,104,2048,32767,32768,49151,49152,data_last)
         label=b'MURO-101-RCV' 
         h[152:152+len(label)]=label
         struct.pack_into('<I',h,36,crc32(h[:192]))
@@ -99,13 +108,14 @@ def main():
 
     ra=recovery_anchor()
     rj=recovery_journal()
+    rj_a=recovery_journal(sequence=2,current_attempts=1) if a.pending_current_attempt else rj
     with open(a.path,'r+b') as f:
         f.seek(0); f.write(mbr)
         f.seek(SECTOR); f.write(ph)
         f.seek(2*SECTOR); f.write(entries)
         f.seek(32768*SECTOR); f.write(ra)
         f.seek(32769*SECTOR); f.write(bytes(SECTOR))  # reserved legacy Boot Control sector
-        f.seek(32770*SECTOR); f.write(rj)
+        f.seek(32770*SECTOR); f.write(rj_a)
         f.seek(49149*SECTOR); f.write(rj)
         f.seek(49150*SECTOR); f.write(bytes(SECTOR))  # reserved legacy Boot Control sector
         f.seek(49151*SECTOR); f.write(ra)
