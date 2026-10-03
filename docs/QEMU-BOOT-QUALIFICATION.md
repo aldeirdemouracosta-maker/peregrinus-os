@@ -47,9 +47,9 @@ Test keys only; nothing produced here is a release artifact.
 
 `scripts/provision-tpm-counter.sh` verifies (default) or defines (`--define`) NV index `0x0180F050` and fails closed on wrong attributes: counter type, OWNERWRITE, AUTHREAD, no AUTHWRITE and **NO_DA**. `--advance-to N` is for test TPMs only, since NV counters never decrease. It uses the standard `TPM2TOOLS_TCTI`.
 
-### Open design question
+### STAGED is deliberately journal-free
 
-In the STAGED state (an epoch transition waiting for its TPM commit) the controller records no attempt, so a recovery-live kernel always halts. The staged kernel of a transition therefore cannot be a commit-live build. Whether that is intended, or whether STAGED should also journal an attempt, is a decision for the project owner. The test pins the current behaviour.
+In the STAGED state (an epoch transition waiting for its TPM commit) the controller prints `TPM transition still STAGED; journal auto-fallback disabled` and records no attempt, and LKG is reachable only through an explicit authenticated boot request (`peregrinus_tpm_state_allows_lkg`). Journaling attempts there would re-enable automatic fallback across an epoch boundary. Consequence, pinned by the test: the staged kernel of a transition must not be a commit-live build, because a recovery-live kernel always refuses the commit and halts in STAGED.
 
 ## Still not run
 

@@ -46,3 +46,7 @@ Purgatório 0.1 adds a bounded in-memory component quarantine/admission gate. It
 ## QEMU boot qualification
 
 `make qemu-boot-test` boots SAFE, read-only disk and e1000 profiles in QEMU/OVMF and checks the serial log; the e1000 run also answers ARP/ICMP and drops non-allowlisted UDP on the wire. See `docs/QEMU-BOOT-QUALIFICATION.md`.
+
+## Network fuzzing
+
+`make fuzz` runs a libFuzzer + ASan/UBSan harness over the Ethernet/IPv4 parser, ARP, the ICMP echo-reply builder and the stateful datapath. Besides memory safety it checks that every ARP/ICMP reply the kernel would send is itself a valid frame. CI runs it for 120 s per change.

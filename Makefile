@@ -191,10 +191,13 @@ qemu-boot-test:
 	./scripts/qemu-boot-test.sh journal
 	./scripts/qemu-boot-test.sh commit
 
+fuzz:
+	./tests/fuzz/run.sh
+
 qemu-trusted-chain-test:
 	./scripts/qemu-trusted-chain-test.sh
 
 qemu-e1000-sandbox:
 	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_QEMU_DMA_TEST=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
 
-.PHONY: all clean check iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox qemu-boot-test qemu-trusted-chain-test
+.PHONY: all clean check iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox qemu-boot-test qemu-trusted-chain-test fuzz

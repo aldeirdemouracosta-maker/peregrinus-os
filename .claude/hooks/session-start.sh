@@ -15,6 +15,7 @@ for pair in clang:clang lld:ld.lld llvm:llvm-objcopy python3:python3 make:make \
   command -v "$bin" >/dev/null 2>&1 || need+=("$pkg")
 done
 [ -f /usr/share/OVMF/OVMF_CODE_4M.fd ] || need+=(ovmf)
+ls /usr/lib/llvm-*/lib/clang/*/lib/linux/libclang_rt.fuzzer-x86_64.a >/dev/null 2>&1 || need+=(libclang-rt-18-dev)
 
 if [ ${#need[@]} -gt 0 ]; then
   SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO=sudo

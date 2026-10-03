@@ -8,3 +8,9 @@ __pycache__/
 # Gerados no release, não versionados
 /SOURCE_SHA256SUMS
 /dist/
+
+# Saídas do libFuzzer
+crash-*
+oom-*
+timeout-*
+leak-*

@@ -20,6 +20,7 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 - Boot real no QEMU/OVMF: `make qemu-boot-test` (precisa de qemu-system-x86, ovmf, xorriso, nasm, mtools)
 - Cadeia confiável completa (Secure Boot + TPM): `make qemu-trusted-chain-test` (também swtpm, tpm2-tools, sbsigntool, dosfstools)
 - Provisionar/verificar o contador NV do TPM: `scripts/provision-tpm-counter.sh` (verificação por padrão; `--define` cria com `no_da`)
+- Fuzzing da rede (libFuzzer + ASan/UBSan): `make fuzz` (`FUZZ_SECONDS`, padrão 60; precisa de libclang-rt-18-dev)
 - Limpeza: `make clean`
 
 ## Convenções
