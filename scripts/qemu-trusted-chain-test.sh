@@ -91,25 +91,22 @@ make_disk "$OUT/tampered.img" "$OUT/esp-tampered"
 
 # provision_tpm STATE_DIR COUNTER  (fresh TPM, counter index defined and advanced)
 provision_tpm() {
-  local dir=$1 want=$2 port=$((20000 + RANDOM % 20000)) cur
+  local dir=$1 want=$2 rc=0
   mkdir -p "$dir"
-  swtpm socket --tpm2 --tpmstate dir="$dir" --server type=tcp,port="$port" \
-    --ctrl type=tcp,port=$((port + 1)) --flags not-need-init,startup-clear &
+  # Unix sockets (no TCP port collisions); the TCTI expects "<path>.ctrl".
+  swtpm socket --tpm2 --tpmstate dir="$dir" --server type=unixio,path="$dir/prov.sock" \
+    --ctrl type=unixio,path="$dir/prov.sock.ctrl" --flags not-need-init,startup-clear 2>/dev/null &
   local pid=$!
-  export TPM2TOOLS_TCTI="swtpm:host=127.0.0.1,port=$port"
+  export TPM2TOOLS_TCTI="swtpm:path=$dir/prov.sock"
+  for _ in $(seq 50); do [ -S "$dir/prov.sock" ] && break; sleep 0.1; done
   for _ in $(seq 50); do tpm2_getcap properties-fixed >/dev/null 2>&1 && break; sleep 0.1; done
-  # no_da: the index has an empty authValue, so dictionary-attack protection
-  # adds nothing but can lock reads out (TPM_RC_LOCKOUT 0x921) after an
-  # unclean shutdown, which would silently drop the boot to CURRENT-only.
-  tpm2_nvdefine "$TPM_INDEX" -C o -s 8 -a "nt=counter|ownerwrite|authread|ownerread|no_da" >/dev/null
-  read_counter() { tpm2_nvread "$TPM_INDEX" -C o -s 8 2>/dev/null | python3 -c 'import sys;print(int.from_bytes(sys.stdin.buffer.read(),"big"))'; }
-  tpm2_nvincrement "$TPM_INDEX" -C o
-  cur=$(read_counter)
-  while [ "$cur" -lt "$want" ]; do tpm2_nvincrement "$TPM_INDEX" -C o; cur=$(read_counter); done
-  tpm2_shutdown >/dev/null
+  # The operator tool itself defines the index (with no_da) and advances it.
+  ./scripts/provision-tpm-counter.sh --define --advance-to "$want" >/dev/null || rc=$?
+  tpm2_shutdown >/dev/null   # orderly shutdown, as a real power-off would be
   unset TPM2TOOLS_TCTI
   kill "$pid"; wait "$pid" 2>/dev/null || true
-  [ "$cur" -eq "$want" ] || { echo "ERROR: fresh TPM counter starts at $cur, cannot reach $want" >&2; exit 1; }
+  rm -f "$dir/prov.sock" "$dir/prov.sock.ctrl"
+  [ "$rc" -eq 0 ] || { echo "ERROR: provisioning TPM counter to $want failed" >&2; exit 1; }
 }
 
 FAIL=0
@@ -185,6 +182,27 @@ boot tampered-kernel "$OUT/tampered.img" 1 "$OUT/tpm-42-tamper"
 EXPECT=('Access Denied')
 FORBID=("$CTRL" "$KERNEL_BANNER")
 boot unsigned-controller "$OUT/unsigned.img" 1 "$OUT/tpm-42"
+
+# Degraded trust: the controller still boots CURRENT, but records no pre-boot
+# attempt, so the recovery-live kernel must refuse the boot-success commit and
+# halt fail-closed rather than run on an unverified chain.
+DEGRADED_KERNEL=("$KERNEL_BANNER" 'IA_RECOVERY direct boot-success commit: MARK-REJECTED'
+                 'Reason: Peregrinus direct recovery-journal success commit failed')
+# 5. STAGED counter (epoch transition pending): staged Limine, no journal attempt.
+cp "$OUT/base.img" "$OUT/staged.img"
+EXPECT=("$CTRL" 'Secure Boot: ACTIVE' 'TPM transition still STAGED; journal auto-fallback disabled' "${DEGRADED_KERNEL[@]}")
+FORBID=('Pre-boot Recovery Journal selection' 'commit: CONFIRMED' 'CPU EXCEPTION')
+boot staged "$OUT/staged.img" 1 "$OUT/tpm-41"
+# 6. No TPM at all.
+cp "$OUT/base.img" "$OUT/no-tpm.img"
+EXPECT=("$CTRL" 'Secure Boot: ACTIVE' 'TPM anchor unavailable/invalid; CURRENT-only path' "${DEGRADED_KERNEL[@]}")
+FORBID=('Pre-boot Recovery Journal selection' 'commit: CONFIRMED' 'CPU EXCEPTION')
+boot no-tpm "$OUT/no-tpm.img" 1 none
+# 7. Secure Boot off (plain OVMF), even with a COMMITTED TPM.
+cp "$OUT/base.img" "$OUT/sb-off.img"; cp -r "$OUT/tpm-42" "$OUT/tpm-42-sboff"
+EXPECT=("$CTRL" 'Secure Boot: NOT TRUSTED; CURRENT-only path' "${DEGRADED_KERNEL[@]}")
+FORBID=('Secure Boot: ACTIVE' 'Pre-boot Recovery Journal selection' 'commit: CONFIRMED' 'CPU EXCEPTION')
+boot sb-off "$OUT/sb-off.img" 0 "$OUT/tpm-42-sboff"
 
 if [ "$FAIL" -ne 0 ]; then echo "FAIL: trusted chain"; exit 1; fi
 echo "PASS: trusted chain"

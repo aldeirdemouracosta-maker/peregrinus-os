@@ -29,6 +29,11 @@ OVMF with Secure Boot enforced (Ubuntu's public *snakeoil* test keys) → signed
 | counter 40 (STALE) and 43 (FUTURE) | controller: **`TPM counter incompatible with media; FAIL-CLOSED`**; no loader, no kernel |
 | one flipped byte in the kernel on the ESP | controller chainloads Limine; the **kernel never starts** (enrolled-config hash pin) |
 | unsigned controller | firmware: **`Access Denied`**; nothing runs |
+| counter 41 (STAGED) | `TPM transition still STAGED`; staged Limine boots the kernel, no pre-boot attempt → kernel **`MARK-REJECTED`** + fail-closed halt |
+| no TPM | `TPM anchor unavailable/invalid; CURRENT-only path` → kernel **`MARK-REJECTED`** + fail-closed halt |
+| Secure Boot off (plain OVMF), counter COMMITTED | `Secure Boot: NOT TRUSTED; CURRENT-only path` → kernel **`MARK-REJECTED`** + fail-closed halt |
+
+Every degraded path (STAGED, no TPM, no Secure Boot) still loads the kernel, but the controller records no pre-boot attempt, so the recovery-live kernel refuses to mark the boot healthy and halts. The TPM counter is provisioned by the operator tool `scripts/provision-tpm-counter.sh` (see below), so that tool is exercised by every run.
 
 Test keys only; nothing produced here is a release artifact.
 
@@ -38,7 +43,15 @@ Test keys only; nothing produced here is a release artifact.
 - **Provision the counter index with `no_da`.** With an empty authValue, dictionary-attack protection adds nothing, but after an unclean shutdown it returns `TPM_RC_LOCKOUT` (0x921) to the controller's `NV_Read`, which silently degrades the boot to the CURRENT-only path. The test provisions `nt=counter|ownerwrite|authread|ownerread|no_da`.
 - `scripts/prepare-epoch-transition.sh` still looked for Limine under `third_party/limine/`; it now uses the pinned build in `third_party/limine-bin`.
 
+### TPM counter provisioning
+
+`scripts/provision-tpm-counter.sh` verifies (default) or defines (`--define`) NV index `0x0180F050` and fails closed on wrong attributes: counter type, OWNERWRITE, AUTHREAD, no AUTHWRITE and **NO_DA**. `--advance-to N` is for test TPMs only, since NV counters never decrease. It uses the standard `TPM2TOOLS_TCTI`.
+
+### Open design question
+
+In the STAGED state (an epoch transition waiting for its TPM commit) the controller records no attempt, so a recovery-live kernel always halts. The staged kernel of a transition therefore cannot be a commit-live build. Whether that is intended, or whether STAGED should also journal an attempt, is a decision for the project owner. The test pins the current behaviour.
+
 ## Still not run
 
-- STAGED counter (cross-epoch transition with a real LKG one-shot), no-TPM and Secure-Boot-off fallbacks in the trusted chain.
+- A real cross-epoch transition (CURRENT epoch > LKG epoch) with the staged LKG one-shot request; the current release profile is same-epoch, so `prepare-epoch-transition.sh` stops by design.
 - Physical X79/iTCO/e1000 hardware and real TPM chips.
