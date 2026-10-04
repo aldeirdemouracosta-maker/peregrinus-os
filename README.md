@@ -62,3 +62,6 @@ make check                 # host regression (must exit 0)
 ./scripts/run-qemu.sh safe # interactive run, serial on stdio
 FUZZ_SECONDS=60 ./tests/fuzz.sh   # libFuzzer + ASan/UBSan over all untrusted-input parsers
 ```
+
+Running it in a virtual machine next to your desktop OS (QEMU tested; VirtualBox and Hyper-V
+NOT RUN): see `docs/VIRTUAL-MACHINE.md`.
