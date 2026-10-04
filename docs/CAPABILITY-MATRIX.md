@@ -32,4 +32,5 @@
 | Recovery-live journal commit | — | — (recovery-live profile: QEMU-verified on a disposable disk) |
 | Boot log on screen (framebuffer text console) | QEMU-verified (text decoded from a screendump) | yes |
 | Shell (ajuda, sobre, status, hw, limpar, reiniciar, parar) via PS/2 keyboard and COM1 | QEMU-verified (sendkey + serial) | yes (serviced with the datapath) |
+| Interrupts (PIC + PIT 100 Hz, LAPIC virtual wire), idle hlt | QEMU-verified (BIOS + UEFI; ~2% idle CPU) | yes (NIC still polled) |
 | Physical hardware | NOT RUN | NOT RUN |

@@ -38,13 +38,17 @@ int main() {
     ed.clear(); ed.feed('\x01', nullptr); ed.feed('\xC3', nullptr);
     if (ed.length() != 0) { std::puts("FAIL: control/non-ASCII bytes accepted"); return 7; }
 
-    const shell::SystemInfo info{"Purgatorio 0.1.1 Admission Gate", 24, 3, "BOOT-PASSIVE (no storage path)", true, "RDRAND", true, true, 254, 6, 1, 1, true, true};
+    const shell::SystemInfo info{"Purgatorio 0.1.1 Admission Gate", 24, 3, "BOOT-PASSIVE (no storage path)", true, "RDRAND", true, true, 254, 6, 1, 1, true, true, true, 100, [] { return uint64_t(372512); }};
     auto run = [&](const char* l) { g_out.clear(); return shell::execute(l, info, sink); };
     if (run("ajuda") != shell::Action::none || g_out.find("reiniciar") == std::string::npos) { std::puts("FAIL: ajuda"); return 8; }
     if (run("  HELP  ") != shell::Action::none || g_out.find("Comandos:") == std::string::npos) { std::puts("FAIL: help alias/case/spaces"); return 9; }
     if (run("sobre") != shell::Action::none || g_out.find("Geração 24, security epoch 3") == std::string::npos) { std::puts("FAIL: sobre"); return 10; }
     if (run("status") != shell::Action::none || g_out.find("Guard: BOOT-PASSIVE") == std::string::npos || g_out.find("semente RDRAND") == std::string::npos) { std::puts("FAIL: status"); return 11; }
     if (run("hw") != shell::Action::none || g_out.find("RAM utilizável: 254 MiB") == std::string::npos) { std::puts("FAIL: hw"); return 12; }
+    if (run("tempo") != shell::Action::none || g_out.find("1h 2min 5s (372512 ticks)") == std::string::npos) { std::puts("FAIL: tempo"); return 17; }
+    shell::SystemInfo polled = info; polled.interrupts = false;
+    g_out.clear(); shell::execute("tempo", polled, sink);
+    if (g_out.find("modo polling") == std::string::npos) { std::puts("FAIL: tempo without timer"); return 18; }
     if (run("limpar") != shell::Action::clear_screen || run("reiniciar") != shell::Action::reboot || run("parar") != shell::Action::halt) { std::puts("FAIL: actions"); return 13; }
     if (run("formatar disco") != shell::Action::none || g_out.find("Comando desconhecido: formatar") == std::string::npos) { std::puts("FAIL: unknown"); return 14; }
     if (run("abcdefghijklmnopqrstuvwxyz") != shell::Action::none || g_out.find("longo demais") == std::string::npos) { std::puts("FAIL: long word"); return 15; }

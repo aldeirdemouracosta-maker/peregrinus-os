@@ -41,12 +41,13 @@ FATAL='KERNEL PANIC|CPU EXCEPTION|fail-closed halt'
 case_safe_bios(){
   echo "== SAFE profile, legacy BIOS"
   local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
-  boot safe-bios.log 'live NIC ownership remains BLOCKED|PANIC|EXCEPTION|halt\.' 60 -cdrom "$iso"
+  boot safe-bios.log 'Shell: |PANIC|EXCEPTION|halt\.' 60 -cdrom "$iso"
   expect safe-bios.log 'Kernel \.text SHA-256'
   expect safe-bios.log 'Stack protector: ACTIVE'
   expect safe-bios.log 'Console: framebuffer text'
   expect safe-bios.log 'ACPI MADT LAPIC'
   expect safe-bios.log 'PEREGRINUS GUARD: passive boot'
+  expect safe-bios.log 'Interrupts: PIC/PIT live'
   expect safe-bios.log 'live NIC ownership remains BLOCKED'
   forbid safe-bios.log "$FATAL"
 }
@@ -54,9 +55,10 @@ case_safe_uefi(){
   echo "== SAFE profile, UEFI (OVMF)"
   [[ ${#OVMF[@]} -gt 0 ]] || { echo "  FAIL: OVMF not found"; FAILS=$((FAILS+1)); return; }
   local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
-  boot safe-uefi.log 'live NIC ownership remains BLOCKED|PANIC|EXCEPTION|halt\.' 120 "${OVMF[@]}" -cdrom "$iso"
+  boot safe-uefi.log 'Shell: |PANIC|EXCEPTION|halt\.' 120 "${OVMF[@]}" -cdrom "$iso"
   expect safe-uefi.log 'ACPI MCFG ECAM base'
   expect safe-uefi.log 'PEREGRINUS GUARD: passive boot'
+  expect safe-uefi.log 'Interrupts: PIC/PIT live'
   expect safe-uefi.log 'live NIC ownership remains BLOCKED'
   forbid safe-uefi.log "$FATAL"
 }
@@ -133,6 +135,38 @@ case_shell(){
     echo "  ok: prompt, typed commands and accented output decoded from the screen"
   else tail -3 "$OUT/shell-screen.txt"; FAILS=$((FAILS+1)); fi
 }
+case_no_serial(){
+  echo "== machine without a serial port: boot and shell still reach the screen, with no per-character delay"
+  local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
+  local mon="$OUT/noserial.mon"; rm -f "$mon" "$OUT/noserial.ppm"
+  "${QEMU[@]}" -serial none -monitor unix:"$mon",server,nowait -cdrom "$iso" & local pid=$!
+  sleep 20
+  python3 - "$mon" "$PWD/$OUT/noserial.ppm" <<'PY'
+import socket, sys, time
+s = socket.socket(socket.AF_UNIX)
+for _ in range(50):
+    try: s.connect(sys.argv[1]); break
+    except OSError: time.sleep(0.2)
+time.sleep(0.3); s.recv(4096)
+for k in ['h', 'w', 'ret']:
+    s.sendall(('sendkey %s\n' % k).encode()); time.sleep(0.2)
+time.sleep(1.0)
+s.sendall(('screendump %s\n' % sys.argv[2]).encode()); time.sleep(1.5); s.close()
+PY
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  if python3 tests/qemu/screen_text.py "$OUT/noserial.ppm" 'Boot complete' 'peregrinus> hw' 'RAM utilizável' > "$OUT/noserial.txt"; then
+    echo "  ok: booted within 20 s and the keyboard shell answered, without COM1"
+  else tail -3 "$OUT/noserial.txt"; FAILS=$((FAILS+1)); fi
+}
+case_idle(){
+  echo "== interrupts: idle shell halts the CPU (hlt) and the PIT timer runs"
+  local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
+  local ser="$OUT/idle.ser"; rm -f "$ser"
+  "${QEMU[@]}" -chardev socket,id=s0,path="$ser",server=on,wait=off -serial chardev:s0 -cdrom "$iso" & local pid=$!
+  if python3 tests/qemu/idle_check.py "$ser" "$pid" > "$OUT/idle.txt" 2>&1; then sed 's/^/  ok: /' "$OUT/idle.txt"
+  else cat "$OUT/idle.txt"; FAILS=$((FAILS+1)); fi
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+}
 case_double_fault(){
   echo "== kernel stack overflow hits the guard page and is reported (no silent triple fault)"
   local iso; iso=$(./scripts/make-iso.sh double-fault-test | tail -1)
@@ -141,7 +175,7 @@ case_double_fault(){
 }
 
 CASES=("$@")
-[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell e1000 recovery_commit_test recovery_live double_fault)
+[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell no_serial idle e1000 recovery_commit_test recovery_live double_fault)
 for c in "${CASES[@]}"; do "case_$c"; done
 if (( FAILS )); then echo "QEMU qualification: $FAILS failure(s); serial logs in $OUT/"; exit 1; fi
 echo "QEMU qualification: PASS (${CASES[*]})"

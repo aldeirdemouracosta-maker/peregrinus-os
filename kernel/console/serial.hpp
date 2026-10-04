@@ -1,6 +1,8 @@
 #pragma once
 namespace peregrinus::serial {
+// Returns false (and serial output is skipped) when no UART answers at COM1.
 bool init();
+bool present();
 void putc(char c);
 void write(const char* s);
 void writeln(const char* s);

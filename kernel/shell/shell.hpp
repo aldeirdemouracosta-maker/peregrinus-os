@@ -13,6 +13,9 @@ struct SystemInfo {
     bool screen_console, keyboard;
     uint64_t usable_mib, pci_functions, local_apics, io_apics;
     bool acpi_madt, acpi_mcfg;
+    bool interrupts;               // PIC/PIT live (false: polling fallback)
+    uint32_t timer_hz;
+    uint64_t (*ticks)();           // live tick counter (may be null)
 };
 using Output = void (*)(const char*);
 enum class Action : uint8_t { none, clear_screen, reboot, halt };

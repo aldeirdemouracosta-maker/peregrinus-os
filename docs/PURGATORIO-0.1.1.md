@@ -58,9 +58,25 @@ sistema por um cabo serial ou por outro programa. Comandos: `ajuda`, `sobre`, `s
 `limpar`, `reiniciar`, `parar` (com aliases em inglês); nenhum grava nada. A linha é limitada a
 96 caracteres e aceita só ASCII. Sem controlador PS/2, o shell segue pela serial. O console de
 texto passou a desenhar acentos e cedilha (U+00A0–U+00FF da mesma fonte de domínio público).
-Ainda sem interrupções, então o laço de entrada ocupa a CPU (aceitável em VM; melhorar depois).
+Com as interrupções (abaixo), o shell ocioso deixa a CPU parada em `hlt`.
 Testes: `tests/shell.sh` (decodificador, editor, comandos) e o cenário QEMU `shell`, que digita
 pelo teclado emulado (`sendkey`) e pela serial e lê o resultado também nos pixels da tela.
+
+## Interrupções e timer
+
+PIC 8259 remapeado para os vetores 0x20–0x2F e PIT a 100 Hz. Só três IRQs ficam liberadas: timer,
+teclado e COM1 (quando existem). Os handlers em Assembly salvam os registradores voláteis e
+enfileiram os bytes em anéis fixos (128 e 512 bytes; o excesso é descartado e contado). O APIC
+local é posto em "virtual wire" (LINT0 = ExtINT), em xAPIC ou x2APIC, porque o bootloader pode
+deixá-lo bloqueando o PIC; esse problema foi encontrado no teste. Se nenhum tick chegar, tudo é
+mascarado de novo e o sistema segue em polling (fail-closed). Ocioso, o shell faz `cli`/checagem/
+`sti; hlt`, sem perder eventos: a CPU do QEMU caiu de 100% para cerca de 2%. Comando novo: `tempo`.
+O perfil e1000 continua fazendo polling da placa (latência mínima para a qualificação).
+
+A serial deixou de perder caracteres: a espera do UART era curta demais. Agora o UART é detectado
+no boot (registrador de rascunho). Sem UART, a saída vai só para a tela; um UART travado é
+desligado no primeiro timeout, sem atraso por caractere. Cenários QEMU novos: `idle` (CPU ociosa
+e timer) e `no_serial` (máquina sem COM1).
 
 ## Ressalvas (não resolvidas por código)
 

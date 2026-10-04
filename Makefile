@@ -28,6 +28,7 @@ CPP_SRCS := \
 	kernel/arch/x86_64/exceptions.cpp \
 	kernel/arch/x86_64/gdt.cpp \
 	kernel/arch/x86_64/idt.cpp \
+	kernel/arch/x86_64/interrupts.cpp \
 	kernel/arch/x86_64/kstack.cpp \
 	kernel/boot/limine_requests.cpp \
 	kernel/console/format.cpp \
@@ -82,6 +83,7 @@ EXTRA_CPP_SRCS ?=
 
 ASM_SRCS := \
 	kernel/arch/x86_64/isr.S \
+	kernel/arch/x86_64/irq.S \
 	kernel/start.S
 
 OBJS := $(CPP_SRCS:%.cpp=$(BUILD)/%.o) $(EXTRA_CPP_SRCS:%.cpp=$(BUILD)/%.o) $(ASM_SRCS:%.S=$(BUILD)/%.o)
@@ -133,6 +135,7 @@ check: $(KERNEL)
 	./tests/acpi_tables.sh
 	./tests/text_console.sh
 	./tests/shell.sh
+	./tests/ring.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh

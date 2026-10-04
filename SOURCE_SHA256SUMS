@@ -1,5 +1,5 @@
 ccf5f91886edd2835aa7c34db0dcec4c3c8ecb74f3dd7c7e9dba20d87485f02c  ./LICENSE-PROJECT.txt
-3ceda796dd1681a3ec9d02a4ad76d77d34d35f2ff2f74ced7c1b5397cbbf9a2d  ./Makefile
+1dcca0d4c3eac45b8bf0857c7566fc455923cabe261e088423e56bc3d483a43d  ./Makefile
 d73958e06de6b9f1007ade3e057fe6c75ebf9de7888cb288557b0901129d3228  ./README.md
 becd09c4c0918be75a0977588939307d1070a597634de948218aa7751838ea20  ./THIRD_PARTY_LOCK.md
 314a7703214fd0e71e9b8bde09122ca91539cbfc0fd976624bde350c5b525dd6  ./THIRD_PARTY_NOTICES.md
@@ -12,12 +12,12 @@ a7bc1a880cbb28e212f2682df7a386a72076c8ee6cdbe45a0743e9937cbf1379  ./bootctl/uefi
 78bb283c296b187593295d356a24a3e5abfe6b0a30a921a8e9d600ce106828c0  ./bootctl/uefi/uefi_min.h
 b85e8babb517204338aafe93c235cde981aa3d2bd168e5879725eb5024e1b588  ./docs/ARCHITECTURE.md
 ba792218776f402a79725fabdaf1141a0c66f54e5843e70c7a0d256edb6e439c  ./docs/AUDIT-MURO-0.2.md
-9ad7304ff88101e5e7fc0fb1ace97d54419fbb3b2bf9e9c00ddbdc1b610e0012  ./docs/CAPABILITY-MATRIX.md
+a7f40f1171fb0d6471cca7748287438a6ff0058cd52ee5af74c0fa1dc12251de  ./docs/CAPABILITY-MATRIX.md
 749349bf28c9e09d60938c7a15f7469d8aa469d79fba124cc3f7af60e6103926  ./docs/LEAN-AUDIT.md
 dfa083811e42b2eb0150650bad0749765c59c584aa0370716b37868d9f992058  ./docs/MURO-0.2.1.md
 e0b2ec68589b3497462c76f405d5a989e490e820b3f34963182b4d53e0c4c257  ./docs/MURO-1.0.md
 e2d202efea590b3a7067bbde7848e3a800e298984399e7ec052f08df9198ad85  ./docs/PROJECT-REVIEW-2026-10-02.md
-f47a42dedbf42018410d3b21273acef1bf164e01f3b8035f61c5c0912fe56264  ./docs/PURGATORIO-0.1.1.md
+e139c5e70fbd12740d4e5d8d0a2fc56cb499d02d6a7a3cb555811c785aeb8367  ./docs/PURGATORIO-0.1.1.md
 3c74a2e7872ccbc15e4b5a9511d5733a4fa3a201277a65148867f8f85aaca262  ./docs/PURGATORIO-0.1.md
 3872caa29cb1874bef1f8118cbb787e2a530caca2fecc54e4eba7eebe389879a  ./docs/VIRTUAL-MACHINE.md
 73ff98036589e57a06b5263199427a4b63796066e7a313462aa161b2a28c5bda  ./include/peregrinus/io.hpp
@@ -31,8 +31,11 @@ a148954c20b2d4b34baad9de6679de2110abe96fd1d5ee39eba9408f47a0b4e8  ./kernel/arch/
 b4712784b91dc21b5598de9466c313782c1a61cda0e2404ddfce21f4a018bea8  ./kernel/arch/x86_64/exceptions.cpp
 44401231d27c46d1539b67b47ad7868fc842fab82161bf470bec8d3e68b84078  ./kernel/arch/x86_64/gdt.cpp
 519439989aa0f6b0ca39997534caad9ac8f678b14c25663b308cd5c5012c92f9  ./kernel/arch/x86_64/gdt.hpp
-498c06918f1403c63ef1100a2fe5356c5ce3b125127a1fc1f7423dd446ac5d36  ./kernel/arch/x86_64/idt.cpp
+dbafd3c6f6599ea348fe6e903558efb440b86540fb5619dcf7d238d9d9b42f9a  ./kernel/arch/x86_64/idt.cpp
 0d0390ce90daccd0089b9ec19c90e41dcb8b68431a7d8468a2e81115d185da3d  ./kernel/arch/x86_64/idt.hpp
+16e9b34e8efae9f8adc4bff576591b5f83f81c4d480f8212404bc4e7be7cfbb8  ./kernel/arch/x86_64/interrupts.cpp
+bec95ef1dd60d7ff118e900133449c8be4c45f24e2e1d619543fd6a23d47969f  ./kernel/arch/x86_64/interrupts.hpp
+d98123ff4dbe4678eb64f3c99f6f8cbf6a1f37c591d26d1209a3fbfa85fe4b40  ./kernel/arch/x86_64/irq.S
 64b531703818a63ea4d0ed35b9db1a78daef80e6b16380d0ea6bf9c1557f33e9  ./kernel/arch/x86_64/isr.S
 5cc309e242ee2329cf20b8d62cb405e648518fcff3f7ebbf3c7dc34627098c0f  ./kernel/arch/x86_64/kstack.cpp
 d6e56de26e50a76b9de29d2562ccb95a72fe1d2d7d6547008de0a5fbc92f4992  ./kernel/arch/x86_64/kstack.hpp
@@ -44,8 +47,8 @@ cf72494fe739d6fe7f57dcb35f882d8d43d6c7c3db803b8494eab305bc0422ca  ./kernel/conso
 1fce443d5f9e3ae40c37095a41624f3c12bbef658c2bca7964e8ebf297f930e9  ./kernel/console/format.hpp
 f87514a368288e3d511dbe95f05e99b3c39b5f1818f09937840c6a34b0e2e326  ./kernel/console/framebuffer.cpp
 6195b98703cdfedaf32208b6a9000c10114506796c1212ebed27bc5b995b99c7  ./kernel/console/framebuffer.hpp
-38d4a538a4db639c58864bc71ffa7d45cc0b172fe87e20e43d07f261661bef15  ./kernel/console/serial.cpp
-c17ab15e7f451c92cf32c34ba44848ba968f95a30dc793ce2387c1b730715a4c  ./kernel/console/serial.hpp
+c87034cf5df873d54a2a296036fd4f62dd3ffe7259e7f2f38fa0fa77a9c21462  ./kernel/console/serial.cpp
+5fba1e04e05c4d40f30bddec2ff172f9f3aadb52a385949a23e3c9d9d99f8386  ./kernel/console/serial.hpp
 56e02736900a4cbf3a611d3d9f8eb5d956d06e42be23097bfb360b2751974497  ./kernel/console/text_console.cpp
 962dc056e191afb3d19f4930231b324b863d81510ce8b14993ce6ba83f09fa19  ./kernel/console/text_console.hpp
 cc3bf1d31e65edaa77ccc56dfcb1282df25ac1ff7b71d706d268c27c9a3b2faa  ./kernel/hw/manifest.cpp
@@ -54,7 +57,7 @@ c305b4b50c9ce3c39e588fd6dbeb181da88c6d44f957cdd50182647c77d1319a  ./kernel/input
 a895c2f0855a8ab98ba91f6af4e3e2dc5fbdc55af2fc495cfafbe894170fc1d1  ./kernel/input/keyboard.hpp
 bf743274ec33c197a397b060e272ac68b93f6ecf66de39638a9268d409bca0cd  ./kernel/input/ps2.cpp
 cd7874ec85d27a4de5a9e48e8fd4030613d2d0fda17ef979a67b9474c9ea1b20  ./kernel/input/ps2.hpp
-3934509b115b5c1f5fe728892e92634bc8a7d57727df1035dac010c3c2035bba  ./kernel/main.cpp
+40fcfe1bf438a419f3602e121e9d0bb292fa93de94d2de41b390679d9f5289bd  ./kernel/main.cpp
 2b435db692242c917d9ec2ce6a46f79c0c30349b392412603eb9327f66903f94  ./kernel/mm/memory.cpp
 078abe2823ae2dd84f6b1f6b1848b439316da69f15b424c059b6490ab1258ce0  ./kernel/mm/memory.hpp
 d13918234f08d1ca35305ade10a0bf91fb29807b4fea3a08a5129b33f80e8053  ./kernel/mm/mmio.cpp
@@ -86,6 +89,7 @@ ff60fed36643c830a1202a88aab1b28669f81bce91fe1851048840894959a33c  ./kernel/net/s
 b4fc60e09ac829ba0db250e97cca88ff9aa4d77160dc2949c003132ccae8b2fc  ./kernel/pci/pci.cpp
 b952dae4401d584f9050d5f0f9f34a91e2484490154489d2684f301e8c36ed3e  ./kernel/pci/pci.hpp
 7f9e03347dcb6e387b5b47cbdb0dcee1f8df20bf952cbff725404ebf9d464843  ./kernel/runtime/memory.cpp
+d791d2b5f3b97ba50c2f0a5063fea217b0457d4991b499120801857c0e3cee08  ./kernel/runtime/ring.hpp
 140a12142597d9682be591543629049a8541f6a09d7fa81930928ecc99e6370c  ./kernel/runtime/spin.hpp
 f39bca470baecdad8559d733b9751c32439b97e4b36972c9aded17a7b0b84793  ./kernel/runtime/stack_protector.cpp
 c4f519e8301f37bebbf4045a96b3185eaa4c09b43bebfd52f786cf2bc72180b4  ./kernel/security/firewall.cpp
@@ -104,8 +108,8 @@ e459abd948bda368c2bdf8b9a62a43f16d914c9965378bf7032633c6246f3148  ./kernel/secur
 d75b24edf0fefa87a055091efc84f9ff066d69a44f1a8fb37cdb2ad431e63a4c  ./kernel/security/sha256.hpp
 08b40a984a17bb3344a60edd406cf327bafc522183fe672769e3fc5be406c774  ./kernel/security/watchdog.cpp
 314946b97d1c3556dec7e97c7dda419ce4ad468d095fbbbfc6b0de60068293ec  ./kernel/security/watchdog.hpp
-3a7dc48bb1ca305a1ae10a1b1427af70c895ab7b9fef54d6c4efe960f301bfad  ./kernel/shell/shell.cpp
-823f946a3c63658a773088d1ad95f3d910091c0a477d33abe4acad2dd92aded4  ./kernel/shell/shell.hpp
+1db42f65f3da6d57cbfcafdda234887f24f57a34e20fa33b4bc81a4f8dbdc958  ./kernel/shell/shell.cpp
+0edb4fd3e699b63a5bc7232f548df07ac25fb3d87c2fa122a862664db5594556  ./kernel/shell/shell.hpp
 f8d97c66aef610d16488cd1f73cf3ad131cbf81b19c14acc9a6fcb10e6405756  ./kernel/start.S
 ce85c068f11650f10ab552beafd929972f5d2659aca8814ef1aa3c0d6763b335  ./kernel/storage/ahci.cpp
 f80970c63c4132704efea4a63531c667315a09f0980c18c9118146082ec1d32b  ./kernel/storage/ahci.hpp
@@ -144,7 +148,7 @@ e6618b50144c47ebd303dea09eb3b1ca349cfc800c9152773705f433eab1285a  ./scripts/make
 5a816c050dfe0e4dc43d958efdca16bc6da0e628ad8e61617f2c2612b872ee9c  ./scripts/make-iso.sh
 3e3e602c7cacf3884100d8c88fe785e337e72ef4577ecbe963110b45678fb20f  ./scripts/prepare-epoch-transition.sh
 1cb92a16f158cc061ce92fd951100d8a35dae55b5d6ee84aef6e7571999307e4  ./scripts/prepare-secure-boot.sh
-5a5e51339c00167565fbd470bc473f86c2049dcf42bb28d07c8fb4398c783825  ./scripts/qemu-qualify.sh
+6f52a9755e497a9c034ab5b1154dc27b83155f9836eb80948376c3569709d20f  ./scripts/qemu-qualify.sh
 7b865ea93c9fba7999b68f853a991f92ed01e687c4f432418a3f6a2ac715ef02  ./scripts/release-profile.py
 cb446b489778b3f19e9505be77431ad3676e17bdb263e865cf3fdfbbc3dd8e73  ./scripts/run-qemu.sh
 110be250b061876c11f9b0d29b79545d9f221238d4ba95904a03f47e9c70f1d9  ./scripts/seal-kernel.py
@@ -186,6 +190,7 @@ aa96ff14f31c9453762f437269cf3177f982e19d9bb23556c37f4d3f545eabf4  ./tests/networ
 aae6c3baec0c2db0e0f5c805c7737bba0642a2c87ba9b18f83c60e5efe941d71  ./tests/profile_matrix.sh
 e78a0c296a11eed97cf497979fc15d63e4adcc271490446c1b48ef8590b6c02a  ./tests/profile_matrix_test.cpp
 411e8a9bee4052edfaee4209fd34997cc468df150147c4f6cfe47ed50d55f47a  ./tests/qemu/check_journal.py
+d67e56c6e1b15ccb898cf57413ac629bb805b85073ecebb47c7f7c661a87d588  ./tests/qemu/idle_check.py
 99efb89a855e9593bcf858f78d1a3b3f0536ce356d7061dc73c96a00ba12ef9d  ./tests/qemu/net_inject.py
 b1440d4299b3c8e2e2ab972cb5917ed78a969ad913c801a89711373cf4060bdf  ./tests/qemu/screen_text.py
 5dde497514098d4d6e2717d91d434f11963d7196b9294ad05d55b469d203eb1a  ./tests/qemu/shell_drive.py
@@ -198,13 +203,15 @@ ec5e503199cd6258780de869e1fe36d412003cdf0412cc0c2011eba5012dc2fb  ./tests/recove
 bf6a580918c1e430161a0e57e309a36ad11022a872c71ebc7ab878ea8c83c229  ./tests/recovery_journal.sh
 f6cc0c5634535caccf834239499df032c0fe2f48e293ab719a033156b93f0a61  ./tests/recovery_journal_test.cpp
 27ad5ccfc5eba40b33267bfe2b47187bd77ebbffdfe888046420cd04b3b18f06  ./tests/release_profile.sh
+a28d43f2d611db9e8884ef1422df4c95bcb3e6ca237dcf3bd28d0b228dafbf75  ./tests/ring.sh
+619592aef8f0ca440b14ebbfdcbd35d164113470441f7a1cb614def2a29e0184  ./tests/ring_test.cpp
 fa1c05052a654082a13539c7eb25018036d5697a10c85c2a8ba68dd0d0a42350  ./tests/root_trust_config.sh
 382f1d533649d295f444ad04660d6c4d366b01c700ee1e9bf9f2a5ac90063806  ./tests/safe_binary_isolation.sh
 01de43778fb073653bd45b87c3e436b1c58ce512087c4eb0296525f0baa8a3d6  ./tests/safety.sh
 93f562fef3e389ee0ad530c49b624df30d02037af7b3d0aef059dec01e45d9c0  ./tests/sha256.sh
 c65f97d4170079bcc4b6345e276f402f6f7ebab203ea870d3a00f421b9d3b5b4  ./tests/sha256_test.cpp
 14f77830216cb03bbb60101ea721e8969ebf804017b128da2ee0e5f8a33a0a98  ./tests/shell.sh
-44284a687be810ff13f3524541dec534580be20d523258ae376098c710dcd93e  ./tests/shell_test.cpp
+6d2a02fa3bcb508a6138ae27e018d2d0e3285440bec647b2f89af28a66b70281  ./tests/shell_test.cpp
 0752ebc411d36b9801b56fa60c7da3d64374c154baa97d8e0ba90cfefdc7e81a  ./tests/text_console.sh
 01db5b52e6498e659816edb3794804812166a41c13ddbb45f3d52d20c2f80502  ./tests/text_console_test.cpp
 e3040b0501a18ee859084c76c4fc532691f976afd7de6a8d45e21eef3e799a9b  ./tests/tpm_commit.sh

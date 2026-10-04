@@ -46,6 +46,7 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         line(out, "  sobre      versão do sistema");
         line(out, "  status     estado de segurança do boot");
         line(out, "  hw         resumo do hardware");
+        line(out, "  tempo      tempo desde o boot");
         line(out, "  limpar     limpa a tela");
         line(out, "  reiniciar  reinicia o computador");
         line(out, "  parar      para o sistema (pode desligar depois)");
@@ -63,6 +64,7 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         out("Canário de pilha: ativo, semente "); line(out, info.canary_source);
         yes_no(out, "Console na tela: ", info.screen_console);
         yes_no(out, "Teclado PS/2: ", info.keyboard);
+        out("Interrupções: "); line(out, info.interrupts ? "ativas (timer PIT, teclado, serial; CPU ociosa em hlt)" : "desligadas (modo polling)");
         return Action::none;
     }
     if (same(cmd, "hw")) {
@@ -71,6 +73,13 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         out("CPUs (LAPIC): "); dec(info.local_apics, out); out(", IOAPICs: "); dec(info.io_apics, out); out("\n");
         yes_no(out, "ACPI MADT: ", info.acpi_madt);
         yes_no(out, "ACPI MCFG: ", info.acpi_mcfg);
+        return Action::none;
+    }
+    if (same(cmd, "tempo") || same(cmd, "uptime")) {
+        if (!info.interrupts || !info.ticks || info.timer_hz == 0) { line(out, "Sem timer: interrupções desligadas (modo polling)."); return Action::none; }
+        const uint64_t t = info.ticks(), s = t / info.timer_hz;
+        out("Tempo desde o boot: "); dec(s / 3600, out); out("h "); dec((s / 60) % 60, out); out("min "); dec(s % 60, out);
+        out("s ("); dec(t, out); line(out, " ticks)");
         return Action::none;
     }
     if (same(cmd, "limpar") || same(cmd, "clear")) return Action::clear_screen;

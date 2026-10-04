@@ -42,6 +42,7 @@
 #include "input/keyboard.hpp"
 #include "input/ps2.hpp"
 #include "shell/shell.hpp"
+#include "arch/x86_64/interrupts.hpp"
 
 // A profile that commits boot success must also be able to read the GPT and the journal;
 // otherwise the commit can never be confirmed and every boot ends in a panic.
@@ -149,9 +150,13 @@ static void kmain_stage2(){
         serial::writeln("Boot complete: firewall/network stack present, live NIC ownership remains BLOCKED in this build.");
     }
     const auto& m=hw::manifest();
+    const bool kbd=ps2::init();
+    const bool irq=interrupts::init(kbd,serial::present());
+    serial::writeln(irq?"Interrupts: PIC/PIT live (100 Hz timer, keyboard and COM1 IRQs); idle CPU halts":"Interrupts: no timer ticks; staying in polling mode (fail-closed fallback)");
     const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
-        security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),ps2::init(),
-        m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present};
+        security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),kbd,
+        m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present,
+        irq,interrupts::timer_hz,interrupts::ticks};
     run_shell(info);
 }
 
@@ -166,10 +171,22 @@ static void run_shell(const peregrinus::shell::SystemInfo& info){
     for(;;){
         bool idle=true;
         if constexpr(features::nic_driver_live){if(net::sandbox::service().poll(8))idle=false;}
-        char c=0;uint8_t sc=0;
-        if(serial::poll_input(c))idle=false;
-        else if(ps2::poll(sc)){idle=false;c=dec.feed(sc);}
-        if(!c){if(idle)asm volatile("pause");continue;}
+        char c=0;uint8_t sc=0,b=0;
+        if(interrupts::active()){
+            if(interrupts::next_serial_byte(b)){idle=false;c=static_cast<char>(b);}
+            else if(interrupts::next_scancode(sc)){idle=false;c=dec.feed(sc);}
+        }else{
+            if(serial::poll_input(c))idle=false;
+            else if(ps2::poll(sc)){idle=false;c=dec.feed(sc);}
+        }
+        if(!c){
+            if(idle){
+                // The e1000 qualification datapath is polled, so that profile keeps spinning.
+                if constexpr(features::nic_driver_live)asm volatile("pause");
+                else interrupts::idle_wait();
+            }
+            continue;
+        }
         if(!ed.feed(c,shell_out))continue;
         const auto action=shell::execute(ed.line(),info,shell_out);
         ed.clear();
