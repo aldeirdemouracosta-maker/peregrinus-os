@@ -165,6 +165,7 @@ static void kmain_stage2(){
 // editor; the e1000 qualification datapath, when present, is serviced in the same loop.
 static void shell_out(const char* s){peregrinus::serial::write(s);}
 static peregrinus::keyboard::Decoder g_keys;
+static peregrinus::shell::HolycBlock g_hc;
 static const char* current_layout(){return peregrinus::keyboard::layout_name(g_keys.layout());}
 static void run_shell(const peregrinus::shell::SystemInfo& info){
     using namespace peregrinus;
@@ -194,8 +195,14 @@ static void run_shell(const peregrinus::shell::SystemInfo& info){
             continue;
         }
         if(!line_done)continue;
+        if(g_hc.active()){
+            g_hc.feed_line(ed.line(),shell_out);ed.clear();
+            serial::write(g_hc.active()?shell::HolycBlock::prompt():shell::prompt());
+            continue;
+        }
         const auto action=shell::execute(ed.line(),info,shell_out);
         ed.clear();
+        if(action==shell::Action::holyc_block){g_hc.begin();serial::write(shell::HolycBlock::prompt());continue;}
         if(action==shell::Action::clear_screen)text_console::clear();
         if(action==shell::Action::reboot){ps2::request_reset();serial::writeln("Reset was ignored by the hardware; halting.");halt_forever();}
         if(action==shell::Action::halt)halt_forever();

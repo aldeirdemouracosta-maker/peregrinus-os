@@ -64,7 +64,8 @@ FUZZ_SECONDS=60 ./tests/fuzz.sh   # libFuzzer + ASan/UBSan over all untrusted-in
 ```
 
 The boot log is shown on screen (framebuffer text console) as well as on COM1. After boot a small
-shell (`peregrinus>`; type `ajuda`) reads the PS/2 keyboard and COM1.
+shell (`peregrinus>`; type `ajuda`) reads the PS/2 keyboard (ABNT2 by default) and COM1, and runs a
+bounded HolyC subset (`hc`, see `docs/HOLYC.md`).
 
 Running it in a virtual machine next to your desktop OS (QEMU tested; VirtualBox and Hyper-V
 NOT RUN): see `docs/VIRTUAL-MACHINE.md`.

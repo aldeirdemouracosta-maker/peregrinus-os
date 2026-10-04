@@ -88,6 +88,13 @@ UTF-8. Pela serial, o UTF-8 é decodificado e caracteres fora de U+0000–U+00FF
 Testes: `tests/shell.sh` (mapas, teclas mortas, AltGr, UTF-8) e o cenário QEMU `shell`, que aperta
 as teclas físicas do ABNT2 e confere "çáõ" no log e na tela.
 
+## HolyC híbrido
+
+O shell aceita um subconjunto de HolyC (`hc <código>`, ou `hc` para várias linhas até `fim`). Ele é
+interpretado com limites fixos (2048 bytes, 32 variáveis, 200 mil passos, profundidade 48, 8 KB de
+saída), sem ponteiros nem acesso ao kernel. Detalhes: `docs/HOLYC.md`. Testes: `tests/holyc.sh`,
+fuzzing e o cenário QEMU `shell`.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

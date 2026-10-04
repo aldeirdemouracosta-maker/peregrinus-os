@@ -73,6 +73,14 @@ int main() {
     if (run("teclado") != shell::Action::none || g_out.find("Teclado atual: ABNT2") == std::string::npos) { std::puts("FAIL: teclado query"); return 28; }
     if (run("teclado us") != shell::Action::layout_us || run("TECLADO abnt2") != shell::Action::layout_abnt2 || run("teclado xx") != shell::Action::none) { std::puts("FAIL: teclado switch"); return 29; }
     if (run("\xE7\xE3o") != shell::Action::none || g_out.find("Comando desconhecido: \xC3\xA7\xC3\xA3o") == std::string::npos) { std::puts("FAIL: Latin-1 echo in messages"); return 30; }
+    if (run("hc \"%d\\n\", 6*7;") != shell::Action::none || g_out != "42\n") { std::printf("FAIL: hc one-liner [%s]\n", g_out.c_str()); return 31; }
+    if (run("hc I64 x = 1/0;") != shell::Action::none || g_out.find("erro na linha 1: divisão por zero") == std::string::npos) { std::puts("FAIL: hc error report"); return 32; }
+    if (run("hc") != shell::Action::holyc_block) { std::puts("FAIL: hc block start"); return 33; }
+    shell::HolycBlock blk; blk.begin(); g_out.clear();
+    if (blk.feed_line("I64 i;", sink) || blk.feed_line("for (i=0;i<3;i++) \"%d\", i;", sink) || !blk.feed_line("fim", sink) || blk.active() || g_out != "012") { std::printf("FAIL: hc block [%s]\n", g_out.c_str()); return 34; }
+    blk.begin(); g_out.clear();
+    for (int i = 0; i < 40; ++i) blk.feed_line("\"0123456789012345678901234567890123456789012345678901234567890\";", sink);
+    if (!blk.feed_line("fim", sink) || g_out.find("maior que 2048") == std::string::npos) { std::puts("FAIL: hc block overflow"); return 35; }
     if (run("limpar") != shell::Action::clear_screen || run("reiniciar") != shell::Action::reboot || run("parar") != shell::Action::halt) { std::puts("FAIL: actions"); return 13; }
     if (run("formatar disco") != shell::Action::none || g_out.find("Comando desconhecido: formatar") == std::string::npos) { std::puts("FAIL: unknown"); return 14; }
     if (run("abcdefghijklmnopqrstuvwxyz") != shell::Action::none || g_out.find("longo demais") == std::string::npos) { std::puts("FAIL: long word"); return 15; }

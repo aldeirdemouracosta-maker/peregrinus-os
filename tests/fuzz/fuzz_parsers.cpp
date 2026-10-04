@@ -9,6 +9,7 @@
 #include "storage/gpt.hpp"
 #include "storage/identify.hpp"
 #include "security/quarantine.hpp"
+#include "shell/holyc.hpp"
 #include <peregrinus/recovery_journal.h>
 
 using namespace peregrinus;
@@ -27,7 +28,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     ++data; --size;
     const net::e1000::MacAddress mac{{0x52, 0x54, 0, 0x12, 0x34, 0x56}};
     uint8_t out[1514];
-    switch (selector % 5) {
+    switch (selector % 6) {
         case 0: {
             const auto dir = (selector & 0x80) ? security::firewall::Direction::ingress : security::firewall::Direction::egress;
             dp.inspect(dir, data, size);
@@ -60,6 +61,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                     peregrinus_rj_mark_success(&k, k.last_slot, k.current_generation, k.current_epoch);
                 }
             }
+            break;
+        case 5:
+            holyc::run(reinterpret_cast<const char*>(data), size, [](const char*) {});
             break;
     }
     return 0;

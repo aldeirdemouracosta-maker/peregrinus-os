@@ -1,4 +1,5 @@
 #include "shell.hpp"
+#include "holyc.hpp"
 namespace peregrinus::shell {
 namespace {
 bool same(const char* a, const char* b) { while (*a && *a == *b) { ++a; ++b; } return *a == 0 && *b == 0; }
@@ -82,6 +83,7 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         line(out, "  hw         resumo do hardware");
         line(out, "  tempo      tempo desde o boot");
         line(out, "  teclado    mostra ou troca o layout: teclado abnt2 | teclado us");
+        line(out, "  hc <código> roda HolyC (subconjunto); 'hc' sozinho abre várias linhas até 'fim'");
         line(out, "  limpar     limpa a tela");
         line(out, "  reiniciar  reinicia o computador");
         line(out, "  parar      para o sistema (pode desligar depois)");
@@ -125,10 +127,38 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         out("Teclado atual: "); line(out, info.layout ? info.layout() : "desconhecido");
         return Action::none;
     }
+    if (same(cmd, "hc") || same(cmd, "holyc")) {
+        const char* p = text; while (*p == ' ') ++p; while (*p && *p != ' ') ++p; while (*p == ' ') ++p;
+        if (!*p) { line(out, "HolyC: digite o programa; uma linha 'fim' executa."); return Action::holyc_block; }
+        size_t n = 0; while (p[n]) ++n;
+        run_holyc(p, n, out);
+        return Action::none;
+    }
     if (same(cmd, "limpar") || same(cmd, "clear")) return Action::clear_screen;
     if (same(cmd, "reiniciar") || same(cmd, "reboot")) { line(out, "Reiniciando..."); return Action::reboot; }
     if (same(cmd, "parar") || same(cmd, "halt")) { line(out, "Sistema parado. Pode desligar o computador."); return Action::halt; }
     out("Comando desconhecido: "); out_latin1(out, cmd); line(out, ". Digite 'ajuda'.");
     return Action::none;
+}
+
+void run_holyc(const char* source, size_t length, Output out) {
+    const holyc::Result r = holyc::run(source, length, out);
+    if (r.ok) return;
+    out("\nerro na linha "); dec(r.line, out); out(": "); line(out, r.error);
+}
+
+bool HolycBlock::feed_line(const char* text, Output out) {
+    if (!active_) return true;
+    if (same(text, "fim") || same(text, "end")) {
+        active_ = false;
+        if (overflow_) { line(out, "HolyC: programa maior que 2048 bytes; descartado."); return true; }
+        run_holyc(buf_, len_, out);
+        return true;
+    }
+    size_t n = 0; while (text[n]) ++n;
+    if (len_ + n + 1 > sizeof(buf_)) { overflow_ = true; return false; }
+    for (size_t i = 0; i < n; ++i) buf_[len_++] = text[i];
+    buf_[len_++] = '\n';
+    return false;
 }
 }

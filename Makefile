@@ -57,6 +57,7 @@ CPP_SRCS := \
 	kernel/runtime/memory.cpp \
 	kernel/runtime/stack_protector.cpp \
 	kernel/shell/shell.cpp \
+	kernel/shell/holyc.cpp \
 	kernel/storage/ahci.cpp \
 	kernel/storage/boot_policy.cpp \
 	kernel/storage/disk_probe.cpp \

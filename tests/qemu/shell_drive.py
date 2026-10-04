@@ -52,6 +52,16 @@ ser.sendall(b'status\r')
 if not read_until('Guard: BOOT-PASSIVE', 10): fail('serial command "status" not answered')
 print('ok: serial input -> status')
 
+# HolyC subset: one-liner, multi-line block, and an infinite loop stopped by the step limit.
+ser.sendall(b'hc "%d\\n", 6*7;\r')
+if not read_until('\n42', 10): fail('hc one-liner')
+for l in [b'hc', b'I64 i;', b'for (i=1; i<=3; i++) "Peregrinus %d\\n", i;', b'fim']:
+    ser.sendall(l + b'\r'); time.sleep(0.2)
+if not read_until('Peregrinus 3', 10): fail('hc block')
+ser.sendall(b'hc while (1) ;\r')
+if not read_until('limite de passos', 15): fail('hc step limit')
+print('ok: HolyC one-liner, block and step limit')
+
 # PS/2 keyboard path (sendkey uses QEMU key names).
 for key in ['s', 'o', 'b', 'r', 'e', 'ret']:
     monitor('sendkey ' + key)
