@@ -137,6 +137,8 @@ check: $(KERNEL)
 	./tests/text_console.sh
 	./tests/shell.sh
 	./tests/ring.sh
+	./tests/holyc.sh
+	./tests/llm.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh
@@ -208,7 +210,15 @@ double-fault-test-kernel:
 qemu-qualify:
 	./scripts/qemu-qualify.sh
 
+# Experimental local-LLM profile: the engine is compiled with SSE (the rest of the kernel stays
+# -mgeneral-regs-only); the model comes as Limine modules and must be in the allowlist.
+LLM_CPP_SRCS := kernel/llm/llm_math.cpp kernel/llm/engine.cpp kernel/llm/service.cpp
+$(BUILD)/kernel/llm/%.o: CXXFLAGS := $(filter-out -mgeneral-regs-only,$(CXXFLAGS)) -msse2 -ffp-contract=off
+
+llm-local:
+	$(MAKE) BUILD=build-llm-local SEAL_LABEL=$(RELEASE_TAG)-LLM-LOCAL EXTRA_CPPFLAGS="-DPEREGRINUS_LLM_LOCAL=1" EXTRA_CPP_SRCS="$(LLM_CPP_SRCS)" all
+
 qemu-e1000-sandbox:
 	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
 
-.PHONY: all clean check double-fault-test-kernel qemu-qualify iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
+.PHONY: all clean check double-fault-test-kernel qemu-qualify llm-local iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox

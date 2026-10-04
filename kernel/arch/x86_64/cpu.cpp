@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdint.h>
 #include "cpu.hpp"
 #include "../../console/serial.hpp"
 
@@ -35,5 +36,14 @@ const char* hypervisor_vendor(){detect_hypervisor();return g_hv_present?g_hv:"";
 bool qemu_qualification_environment(){
     detect_hypervisor();
     return g_hv_present&&(eq(g_hv,"TCGTCGTCGTCG")||eq(g_hv,"KVMKVMKVM\0\0\0"));
+}
+void enable_sse(){
+    uint64_t cr0,cr4;
+    asm volatile("mov %%cr0, %0":"=r"(cr0)); cr0&=~(1ull<<2); cr0|=(1ull<<1);
+    asm volatile("mov %0, %%cr0"::"r"(cr0));
+    asm volatile("mov %%cr4, %0":"=r"(cr4)); cr4|=(1ull<<9)|(1ull<<10);
+    asm volatile("mov %0, %%cr4"::"r"(cr4));
+    asm volatile("fninit");
+    const uint32_t mxcsr=0x1F80; asm volatile("ldmxcsr %0"::"m"(mxcsr));
 }
 }

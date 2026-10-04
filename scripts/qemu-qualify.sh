@@ -167,6 +167,25 @@ case_idle(){
   else cat "$OUT/idle.txt"; FAILS=$((FAILS+1)); fi
   kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
 }
+case_llm(){
+  echo "== local LLM (llm-local profile): allowlisted model module, kernel answer == host engine == llama2.c"
+  local iso; iso=$(./scripts/make-iso.sh llm-local | tail -1)
+  local ser="$OUT/llm.ser" prompt="Peregrinus"; rm -f "$ser"
+  clang++ -std=c++23 -O2 -msse2 -ffp-contract=off -Ikernel tests/llm_test.cpp kernel/llm/engine.cpp kernel/llm/llm_math.cpp -o "$OUT/llm_host"
+  "$OUT/llm_host" build-testmodel/model.bin build-testmodel/tokenizer.bin 0 0.9 1 128 "$prompt" > "$OUT/llm-expected.txt"
+  "${QEMU[@]}" -m 512M -chardev socket,id=s0,path="$ser",server=on,wait=off -serial chardev:s0 -cdrom "$iso" & local pid=$!
+  if python3 tests/qemu/llm_drive.py "$ser" "$OUT/llm-expected.txt" "$prompt" > "$OUT/llm.txt" 2>&1; then sed 's/^/  ok: /' "$OUT/llm.txt"
+  else cat "$OUT/llm.txt"; FAILS=$((FAILS+1)); fi
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  # A model whose digest is not allowlisted (one byte changed) must be refused at boot.
+  rm -rf "$OUT/tampered"; mkdir -p "$OUT/tampered"; cp build-testmodel/tokenizer.bin "$OUT/tampered/"
+  python3 -c "import sys;d=bytearray(open('build-testmodel/model.bin','rb').read());d[1000]^=1;open('$OUT/tampered/model.bin','wb').write(d)"
+  local tiso; tiso=$(MODEL_DIR="$OUT/tampered" ./scripts/make-iso.sh llm-local | tail -1)
+  boot llm-tampered.log 'Shell: |PANIC|EXCEPTION' 90 -m 512M -cdrom "$tiso"
+  expect llm-tampered.log 'not in the allowlist; refused'
+  forbid llm-tampered.log "$FATAL|admitted"
+  ./scripts/make-iso.sh llm-local >/dev/null  # restore the default image
+}
 case_double_fault(){
   echo "== kernel stack overflow hits the guard page and is reported (no silent triple fault)"
   local iso; iso=$(./scripts/make-iso.sh double-fault-test | tail -1)
@@ -175,7 +194,7 @@ case_double_fault(){
 }
 
 CASES=("$@")
-[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell no_serial idle e1000 recovery_commit_test recovery_live double_fault)
+[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell no_serial idle llm e1000 recovery_commit_test recovery_live double_fault)
 for c in "${CASES[@]}"; do "case_$c"; done
 if (( FAILS )); then echo "QEMU qualification: $FAILS failure(s); serial logs in $OUT/"; exit 1; fi
 echo "QEMU qualification: PASS (${CASES[*]})"

@@ -11,6 +11,8 @@ PASS: QEMU interrupts live (BIOS + UEFI): idle shell halts the CPU (~2% host CPU
 PASS: QEMU boot and keyboard shell without any serial port (no per-character delay)
 PASS: QEMU ABNT2 keyboard (ç, dead keys) typed on the emulated PS/2 keyboard, checked in log and on screen
 PASS: QEMU HolyC subset: one-liner, multi-line block, infinite loop stopped by the step limit
+PASS: local LLM engine byte-identical to llama2.c run.c on the host (greedy, temperature, top-p)
+PASS: QEMU llm-local: kernel answer byte-identical to the host engine; tampered model refused by the allowlist
 PASS: QEMU shell driven over COM1 and over the emulated PS/2 keyboard (sendkey); accents on screen
 PASS: QEMU UEFI trusted boot controller -> Limine -> SAFE kernel (Secure Boot off: CURRENT-only path)
 PASS: QEMU e1000 datapath on the wire: ARP reply, ICMP echo (fresh TTL), UDP denied, burst guard, other sources served

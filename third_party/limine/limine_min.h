@@ -60,6 +60,18 @@ struct limine_hhdm_request { uint64_t id[4]; uint64_t revision; limine_hhdm_resp
 struct limine_rsdp_response { uint64_t revision; void *address; };
 struct limine_rsdp_request { uint64_t id[4]; uint64_t revision; limine_rsdp_response *response; };
 
+/* Modules (files loaded by Limine next to the kernel), layout as in limine-protocol limine.h. */
+#define LIMINE_MODULE_REQUEST_ID { LIMINE_COMMON_MAGIC, 0x3e7e279702be32afULL, 0xca1c4f3bd1280ceeULL }
+struct limine_uuid { uint32_t a; uint16_t b; uint16_t c; uint8_t d[8]; };
+struct limine_file {
+    uint64_t revision; void *address; uint64_t size; char *path; char *string;
+    uint32_t media_type; uint32_t unused; uint8_t tftp_ipv4[4]; uint32_t tftp_port;
+    uint32_t partition_index; uint32_t mbr_disk_id;
+    struct limine_uuid gpt_disk_uuid, gpt_part_uuid, part_uuid;
+};
+struct limine_module_response { uint64_t revision; uint64_t module_count; limine_file **modules; };
+struct limine_module_request { uint64_t id[4]; uint64_t revision; limine_module_response *response; uint64_t internal_module_count; void *internal_modules; };
+
 #define LIMINE_EFI_SYSTEM_TABLE_REQUEST_ID { LIMINE_COMMON_MAGIC, 0x5ceba5163eaaf6d6ULL, 0x0a6981610cf65fccULL }
 struct limine_efi_system_table_response { uint64_t revision; void *address; };
 struct limine_efi_system_table_request { uint64_t id[4]; uint64_t revision; limine_efi_system_table_response *response; };

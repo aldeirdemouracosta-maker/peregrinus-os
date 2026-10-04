@@ -84,6 +84,7 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         line(out, "  tempo      tempo desde o boot");
         line(out, "  teclado    mostra ou troca o layout: teclado abnt2 | teclado us");
         line(out, "  hc <código> roda HolyC (subconjunto); 'hc' sozinho abre várias linhas até 'fim'");
+        line(out, "  conversa <texto>   IA local (perfil llm-local); 'conversa -g <texto>' = determinístico");
         line(out, "  limpar     limpa a tela");
         line(out, "  reiniciar  reinicia o computador");
         line(out, "  parar      para o sistema (pode desligar depois)");
@@ -132,6 +133,14 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         if (!*p) { line(out, "HolyC: digite o programa; uma linha 'fim' executa."); return Action::holyc_block; }
         size_t n = 0; while (p[n]) ++n;
         run_holyc(p, n, out);
+        return Action::none;
+    }
+    if (same(cmd, "conversa") || same(cmd, "chat")) {
+        if (!info.converse) { line(out, "IA local não incluída nesta build (use o perfil llm-local)."); return Action::none; }
+        const char* p = text; while (*p == ' ') ++p; while (*p && *p != ' ') ++p; while (*p == ' ') ++p;
+        bool greedy = false;
+        if (p[0] == '-' && p[1] == 'g' && (p[2] == ' ' || p[2] == 0)) { greedy = true; p += 2; while (*p == ' ') ++p; }
+        info.converse(p, greedy, out);
         return Action::none;
     }
     if (same(cmd, "limpar") || same(cmd, "clear")) return Action::clear_screen;

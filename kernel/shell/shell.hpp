@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 namespace peregrinus::shell {
+using Output = void (*)(const char*);
 // Read-only facts the shell can report; filled once by kmain. The shell never changes system
 // state except through the returned Action (clear screen, reboot, halt).
 struct SystemInfo {
@@ -17,8 +18,9 @@ struct SystemInfo {
     uint32_t timer_hz;
     uint64_t (*ticks)();           // live tick counter (may be null)
     const char* (*layout)();       // current keyboard layout name (may be null)
+    // Local LLM (llm-local profile only; null otherwise). prompt is Latin-1.
+    void (*converse)(const char* prompt, bool greedy, Output out);
 };
-using Output = void (*)(const char*);
 enum class Action : uint8_t { none, clear_screen, reboot, halt, layout_us, layout_abnt2, holyc_block };
 
 // Bounded line editor. The line is stored as Latin-1 (ASCII + U+00A0..U+00FF, so Portuguese

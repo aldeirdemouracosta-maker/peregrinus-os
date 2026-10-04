@@ -19,7 +19,7 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 - Qualificação em runtime (QEMU): `./scripts/fetch-limine.sh && ./scripts/qemu-qualify.sh`
 - Fuzzing dos parsers: `FUZZ_SECONDS=60 ./tests/fuzz.sh`
 - Artefatos reprodutíveis: `./scripts/make-artifacts.sh` (CI compara com `artifacts/SHA256SUMS`)
-- Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`
+- Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`, `make llm-local` (experimental; SSE só nele)
 - Limpeza: `make clean`
 
 ## Convenções

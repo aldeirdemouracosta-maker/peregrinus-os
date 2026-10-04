@@ -15,13 +15,22 @@ case "$PROFILE" in
   recovery-live) make current-recovery-live; BUILD=build-current-recovery-live ;;
   e1000) make qemu-e1000-sandbox; BUILD=build-qemu-e1000 ;;
   double-fault-test) make double-fault-test-kernel; BUILD=build-double-fault-test ;;
-  *) echo "usage: $0 [safe|dma-test|recovery-commit-test|recovery-live|e1000|double-fault-test]" >&2; exit 2 ;;
+  llm-local) make llm-local; BUILD=build-llm-local ;;
+  *) echo "usage: $0 [safe|dma-test|recovery-commit-test|recovery-live|e1000|double-fault-test|llm-local]" >&2; exit 2 ;;
 esac
 NAME="peregrinus-$TAG-$PROFILE.iso"
 rm -rf "$BUILD/iso_root"
 mkdir -p "$BUILD/iso_root/boot/limine" "$BUILD/iso_root/EFI/BOOT"
 cp "$BUILD/peregrinus.elf" "$BUILD/iso_root/boot/peregrinus.elf"
 cp limine.conf "$BUILD/iso_root/boot/limine/limine.conf"
+if [ "$PROFILE" = llm-local ]; then
+  # The model travels as two Limine modules. MODEL_DIR must hold model.bin + tokenizer.bin whose
+  # digests are in include/peregrinus/model_allowlist.h; default: the deterministic test model.
+  MODEL_DIR=${MODEL_DIR:-build-testmodel}
+  [ -f "$MODEL_DIR/model.bin" ] || python3 scripts/make-test-model.py "$MODEL_DIR" >/dev/null
+  cp "$MODEL_DIR/model.bin" "$MODEL_DIR/tokenizer.bin" "$BUILD/iso_root/boot/"
+  printf '    module_path: boot():/boot/model.bin\n    module_path: boot():/boot/tokenizer.bin\n' >> "$BUILD/iso_root/boot/limine/limine.conf"
+fi
 cp "$LIM/limine-bios.sys" "$LIM/limine-bios-cd.bin" "$LIM/limine-uefi-cd.bin" "$BUILD/iso_root/boot/limine/"
 cp "$LIM/BOOTX64.EFI" "$BUILD/iso_root/EFI/BOOT/"
 xorriso -as mkisofs -b boot/limine/limine-bios-cd.bin -no-emul-boot -boot-load-size 4 -boot-info-table \

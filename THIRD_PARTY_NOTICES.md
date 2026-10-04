@@ -50,3 +50,18 @@ Muro 1.0 consults the Intel 8254x Software Developer Manual for descriptor-ring/
 https://github.com/dhepper/font8x8 by Daniel Hepper, **Public Domain**, derived from the
 public-domain IBM VGA fonts (via Marcel Sondaar). Glyph data unchanged; only converted to a
 `const uint8_t` C++ table.
+
+## llama2.c and libclamma (local-LLM engine)
+
+`kernel/llm/engine.cpp` is a port of `run.c` from https://github.com/karpathy/llama2.c
+(MIT License, Copyright (c) 2023 Andrej Karpathy), the same inference core used by
+https://github.com/warmcat/libclamma (MIT License, Copyright (C) 2023 Andy Green).
+`tests/llm/run.c` is the unmodified upstream file, used only as the host test reference.
+Permission notice (MIT): Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions: The
+above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED.

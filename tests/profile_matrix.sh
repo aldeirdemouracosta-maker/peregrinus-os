@@ -10,9 +10,15 @@ host_cxx -DEXPECT_SAFE "$T" -o "$TMP/a"
 host_cxx -DEXPECT_E1000 -DPEREGRINUS_QEMU_E1000_SANDBOX=1 "$T" -o "$TMP/a"
 host_cxx -DEXPECT_RECOVERY_LIVE -DPEREGRINUS_RECOVERY_COMMIT_LIVE=1 "$T" -o "$TMP/a"
 host_cxx -DEXPECT_RECOVERY_COMMIT_TEST -DPEREGRINUS_QEMU_RECOVERY_COMMIT_TEST=1 "$T" -o "$TMP/a"
+host_cxx -DEXPECT_LLM -DPEREGRINUS_LLM_LOCAL=1 "$T" -o "$TMP/a"
+for bad in PEREGRINUS_QEMU_E1000_SANDBOX PEREGRINUS_RECOVERY_COMMIT_LIVE PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST; do
+  if host_cxx -DEXPECT_LLM -DPEREGRINUS_LLM_LOCAL=1 -D$bad=1 "$T" -o "$TMP/a" 2>/dev/null; then
+    echo "FAIL: llm-local + $bad compiled; the LLM profile must be exclusive" >&2; exit 1
+  fi
+done
 for bad in PEREGRINUS_RECOVERY_COMMIT_LIVE PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST PEREGRINUS_QEMU_DMA_TEST PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST; do
   if host_cxx -DEXPECT_E1000 -DPEREGRINUS_QEMU_E1000_SANDBOX=1 -D$bad=1 "$T" -o "$TMP/a" 2>/dev/null; then
     echo "FAIL: e1000 + $bad compiled; live profiles must be mutually exclusive" >&2; exit 1
   fi
 done
-echo 'PASS: profile matrix (SAFE / e1000 / recovery-live / QEMU commit) and mutual exclusion of live profiles.'
+echo 'PASS: profile matrix (SAFE / e1000 / recovery-live / QEMU commit / llm-local) and mutual exclusion of live profiles.'

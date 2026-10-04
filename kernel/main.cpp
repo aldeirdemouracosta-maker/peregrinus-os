@@ -43,6 +43,9 @@
 #include "input/ps2.hpp"
 #include "shell/shell.hpp"
 #include "arch/x86_64/interrupts.hpp"
+#if defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1
+#include "llm/service.hpp"
+#endif
 
 // A profile that commits boot success must also be able to read the GPT and the journal;
 // otherwise the commit can never be confirmed and every boot ends in a panic.
@@ -58,6 +61,7 @@ static void require_watchdog(peregrinus::security::watchdog::Stage s){if(!peregr
 static void kmain_stage2();
 static void run_shell(const peregrinus::shell::SystemInfo& info);
 static const char* current_layout();
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse();
 extern "C" const char* peregrinus_stack_guard_source;
 
 extern "C" void kmain(){
@@ -157,7 +161,7 @@ static void kmain_stage2(){
     const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
         security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),kbd,
         m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present,
-        irq,interrupts::timer_hz,interrupts::ticks,current_layout};
+        irq,interrupts::timer_hz,interrupts::ticks,current_layout,llm_converse()};
     run_shell(info);
 }
 
@@ -166,6 +170,14 @@ static void kmain_stage2(){
 static void shell_out(const char* s){peregrinus::serial::write(s);}
 static peregrinus::keyboard::Decoder g_keys;
 static peregrinus::shell::HolycBlock g_hc;
+#if defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){
+    peregrinus::cpu::enable_sse();  // before the first call into SSE-compiled engine code
+    return peregrinus::llm::service::init(peregrinus::boot::module_request.response,shell_out)?peregrinus::llm::service::converse:nullptr;
+}
+#else
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){return nullptr;}
+#endif
 static const char* current_layout(){return peregrinus::keyboard::layout_name(g_keys.layout());}
 static void run_shell(const peregrinus::shell::SystemInfo& info){
     using namespace peregrinus;

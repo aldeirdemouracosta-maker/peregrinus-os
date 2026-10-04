@@ -10,6 +10,7 @@
 #include "storage/identify.hpp"
 #include "security/quarantine.hpp"
 #include "shell/holyc.hpp"
+#include "llm/engine.hpp"
 #include <peregrinus/recovery_journal.h>
 
 using namespace peregrinus;
@@ -28,7 +29,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     ++data; --size;
     const net::e1000::MacAddress mac{{0x52, 0x54, 0, 0x12, 0x34, 0x56}};
     uint8_t out[1514];
-    switch (selector % 6) {
+    switch (selector % 7) {
         case 0: {
             const auto dir = (selector & 0x80) ? security::firewall::Direction::ingress : security::firewall::Direction::egress;
             dp.inspect(dir, data, size);
@@ -65,6 +66,20 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         case 5:
             holyc::run(reinterpret_cast<const char*>(data), size, [](const char*) {});
             break;
+        case 6: {
+            // Model + tokenizer split at a fuzzed point; load (and briefly generate) only when the
+            // validated layout fits a 4 MiB arena.
+            if (size < 4) break;
+            const size_t cut = (size_t(data[0]) << 8 | data[1]) % size;
+            static uint8_t arena_mem[4 << 20];
+            const size_t need = llm::arena_bytes_needed(data, cut, data + cut, size - cut);
+            if (!need || need > sizeof(arena_mem)) break;
+            llm::Arena arena(arena_mem, sizeof(arena_mem));
+            llm::Engine e;
+            if (e.load(data, cut, data + cut, size - cut, arena) == llm::LoadStatus::ok)
+                e.generate("ab", 4, 0.0f, 0.9f, 1, [](const char*) {});
+            break;
+        }
     }
     return 0;
 }

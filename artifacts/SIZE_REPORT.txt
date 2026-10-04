@@ -1,4 +1,5 @@
    text	   data	    bss	    dec	    hex	filename
-  72293	  10952	  45528	 128773	  1f705	peregrinus-purgatorio-0.1.1-current-gen24-e1000-qemu.elf
-  74201	   5032	  82104	 161337	  27639	peregrinus-purgatorio-0.1.1-current-gen24-recovery-live.elf
-  58061	   5032	  45128	 108221	  1a6bd	peregrinus-purgatorio-0.1.1-current-gen24-safe.elf
+  72757	  11016	  45528	 129301	  1f915	peregrinus-purgatorio-0.1.1-current-gen24-e1000-qemu.elf
+  81217	   5104	  45944	 132265	  204a9	peregrinus-purgatorio-0.1.1-current-gen24-llm-local.elf
+  74649	   5096	  82104	 161849	  27839	peregrinus-purgatorio-0.1.1-current-gen24-recovery-live.elf
+  58493	   5096	  45128	 108717	  1a8ad	peregrinus-purgatorio-0.1.1-current-gen24-safe.elf

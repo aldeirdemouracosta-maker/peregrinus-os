@@ -35,4 +35,5 @@
 | Interrupts (PIC + PIT 100 Hz, LAPIC virtual wire), idle hlt | QEMU-verified (BIOS + UEFI; ~2% idle CPU) | yes (NIC still polled) |
 | Keyboard layouts ABNT2 (default, dead keys) and US | QEMU-verified | yes |
 | HolyC subset interpreter in the shell (bounded) | QEMU-verified + fuzzed | yes |
+| Local LLM (llm-local profile only): allowlisted model modules, `conversa` | absent (verified) | QEMU-verified (byte-identical to llama2.c) |
 | Physical hardware | NOT RUN | NOT RUN |

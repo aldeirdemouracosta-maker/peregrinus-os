@@ -3,7 +3,7 @@ set -euo pipefail
 ELF="${1:-build/peregrinus.elf}"
 [[ -f "$ELF" ]]
 SYMS="$(nm -C "$ELF")"
-for s in 'e1000::Driver::init_qemu_sandbox' 'sandbox::Service::init' 'memory::alloc_dma32_page'; do
+for s in 'e1000::Driver::init_qemu_sandbox' 'sandbox::Service::init' 'memory::alloc_dma32_page' 'llm::Engine' 'llm::service' 'cpu::enable_sse'; do
   if grep -Fq "$s" <<<"$SYMS"; then echo "FAIL: SAFE ELF contains live capability: $s" >&2; exit 1; fi
 done
 # Hardening present in the final binary, not just in the build flags.

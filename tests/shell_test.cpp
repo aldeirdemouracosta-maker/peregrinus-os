@@ -59,7 +59,7 @@ int main() {
     for (char c : std::string("a\xC3\xA3o\xE2\x82\xACz\xC3")) ed.feed_utf8(c, sink);
     if (std::strcmp(ed.line(), "a\xE3oz") != 0) { std::puts("FAIL: UTF-8 serial decoding"); return 27; }
 
-    const shell::SystemInfo info{"Purgatorio 0.1.1 Admission Gate", 24, 3, "BOOT-PASSIVE (no storage path)", true, "RDRAND", true, true, 254, 6, 1, 1, true, true, true, 100, [] { return uint64_t(372512); }, [] { return "ABNT2 (Brasil)"; }};
+    const shell::SystemInfo info{"Purgatorio 0.1.1 Admission Gate", 24, 3, "BOOT-PASSIVE (no storage path)", true, "RDRAND", true, true, 254, 6, 1, 1, true, true, true, 100, [] { return uint64_t(372512); }, [] { return "ABNT2 (Brasil)"; }, nullptr};
     auto run = [&](const char* l) { g_out.clear(); return shell::execute(l, info, sink); };
     if (run("ajuda") != shell::Action::none || g_out.find("reiniciar") == std::string::npos) { std::puts("FAIL: ajuda"); return 8; }
     if (run("  HELP  ") != shell::Action::none || g_out.find("Comandos:") == std::string::npos) { std::puts("FAIL: help alias/case/spaces"); return 9; }
@@ -81,6 +81,13 @@ int main() {
     blk.begin(); g_out.clear();
     for (int i = 0; i < 40; ++i) blk.feed_line("\"0123456789012345678901234567890123456789012345678901234567890\";", sink);
     if (!blk.feed_line("fim", sink) || g_out.find("maior que 2048") == std::string::npos) { std::puts("FAIL: hc block overflow"); return 35; }
+    if (run("conversa ola") != shell::Action::none || g_out.find("perfil llm-local") == std::string::npos) { std::puts("FAIL: conversa without LLM"); return 36; }
+    shell::SystemInfo with_llm = info;
+    with_llm.converse = [](const char* p, bool greedy, shell::Output out) { out(greedy ? "[g]" : "[s]"); out(p); };
+    g_out.clear(); shell::execute("conversa -g Era uma vez", with_llm, sink);
+    if (g_out != "[g]Era uma vez") { std::printf("FAIL: conversa -g [%s]\n", g_out.c_str()); return 37; }
+    g_out.clear(); shell::execute("conversa   -gato", with_llm, sink);
+    if (g_out != "[s]-gato") { std::printf("FAIL: conversa option parsing [%s]\n", g_out.c_str()); return 38; }
     if (run("limpar") != shell::Action::clear_screen || run("reiniciar") != shell::Action::reboot || run("parar") != shell::Action::halt) { std::puts("FAIL: actions"); return 13; }
     if (run("formatar disco") != shell::Action::none || g_out.find("Comando desconhecido: formatar") == std::string::npos) { std::puts("FAIL: unknown"); return 14; }
     if (run("abcdefghijklmnopqrstuvwxyz") != shell::Action::none || g_out.find("longo demais") == std::string::npos) { std::puts("FAIL: long word"); return 15; }

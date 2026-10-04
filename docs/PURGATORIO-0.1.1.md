@@ -95,6 +95,15 @@ interpretado com limites fixos (2048 bytes, 32 variáveis, 200 mil passos, profu
 saída), sem ponteiros nem acesso ao kernel. Detalhes: `docs/HOLYC.md`. Testes: `tests/holyc.sh`,
 fuzzing e o cenário QEMU `shell`.
 
+## IA local (perfil experimental `llm-local`)
+
+Porte do motor do llama2.c/libclamma (MIT) para o kernel. O modelo e o tokenizer vêm do pen drive
+como módulos do Limine e só são aceitos se os SHA-256 estiverem na lista de permissão (Purgatório,
+`Kind::model`). A memória vem de uma área contígua reservada uma vez, a matemática é própria
+(≤ 1 ULP) e só esse perfil liga o SSE. Comando: `conversa [-g] <texto>`. A saída é idêntica byte
+a byte ao `run.c` original (`tests/llm.sh`) e, no QEMU, idêntica ao motor no PC; um modelo com 1
+byte alterado é recusado. Detalhes e uso com stories15M: `docs/IA-LOCAL.md`.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

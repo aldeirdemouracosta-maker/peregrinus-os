@@ -3,6 +3,15 @@
 // The distributed build keeps all physical journal writes disabled. The only
 // admitted persistent write path is the two-sector IA_RECOVERY journal commit,
 // enabled explicitly for QEMU testing or hardware qualification.
+// The local-LLM profile is experimental: it may not be combined with the live NIC profile or
+// with any disk-write profile.
+#if (defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1) && \
+    ((defined(PEREGRINUS_QEMU_E1000_SANDBOX) && PEREGRINUS_QEMU_E1000_SANDBOX == 1) || \
+     (defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
+     (defined(PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST) && PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST == 1) || \
+     (defined(PEREGRINUS_RECOVERY_COMMIT_LIVE) && PEREGRINUS_RECOVERY_COMMIT_LIVE == 1))
+#error "Peregrinus: the local-LLM profile is exclusive of the e1000 and storage-write profiles"
+#endif
 #if ((defined(PEREGRINUS_QEMU_E1000_SANDBOX) && PEREGRINUS_QEMU_E1000_SANDBOX == 1) && \
      ((defined(PEREGRINUS_QEMU_DMA_TEST) && PEREGRINUS_QEMU_DMA_TEST == 1) || \
       (defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
@@ -59,6 +68,12 @@ inline constexpr bool dma32_required=ahci_dma_read_live||recovery_journal_write_
 // A build that can touch disk metadata must evaluate the disk/recovery policy; an
 // unevaluated policy then halts. Builds without any storage path boot passively.
 inline constexpr bool storage_policy_required=ahci_dma_read_live||recovery_metadata_live;
+
+#if defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1
+inline constexpr bool llm_local=true;
+#else
+inline constexpr bool llm_local=false;
+#endif
 
 inline constexpr bool itco_watchdog_arm_live=false;
 inline constexpr unsigned long long gpt_primary_metadata_max_lba=33ULL;

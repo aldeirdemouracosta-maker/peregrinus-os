@@ -74,6 +74,7 @@ void init_page_allocator(limine_memmap_response* map){
 }
 
 void* alloc_page(){if(!bump_cur||bump_cur+PAGE>bump_end)return nullptr;uint64_t p=bump_cur;bump_cur+=PAGE;return reinterpret_cast<void*>(p);}
+void* alloc_contiguous(uint64_t bytes){const uint64_t span=align_up(bytes,PAGE);if(!bump_cur||span==0||span>bump_end-bump_cur)return nullptr;const uint64_t p=bump_cur;bump_cur+=span;return reinterpret_cast<void*>(p);}
 void* alloc_dma32_page(){if(!dma_cur||dma_cur+PAGE>dma_end)return nullptr;uint64_t p=dma_cur;dma_cur+=PAGE;return reinterpret_cast<void*>(p);}
 uint64_t free_pages_estimate(){return bump_end>bump_cur?(bump_end-bump_cur)/PAGE:0;}
 uint64_t dma32_free_pages_estimate(){return dma_end>dma_cur?(dma_end-dma_cur)/PAGE:0;}
