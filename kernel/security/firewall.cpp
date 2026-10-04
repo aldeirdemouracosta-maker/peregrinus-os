@@ -66,11 +66,7 @@ uint32_t ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 
 void Engine::reset() {
     rule_count_ = 0;
-    audit_head_ = 0;
-    audit_count_ = 0;
-    next_sequence_ = 1;
     for (size_t i = 0; i < max_rules; ++i) rules_[i] = {};
-    for (size_t i = 0; i < audit_capacity; ++i) audit_[i] = {};
 }
 
 bool Engine::add_allow_rule(const AllowRuleV4& rule) {
@@ -82,46 +78,26 @@ bool Engine::add_allow_rule(const AllowRuleV4& rule) {
     return true;
 }
 
-void Engine::audit(const PacketV4& packet, const Decision& decision) {
-    AuditEvent event{};
-    event.sequence = next_sequence_++;
-    event.decision = decision;
-    event.packet = packet;
-    audit_[audit_head_] = event;
-    audit_head_ = (audit_head_ + 1) % audit_capacity;
-    if (audit_count_ < audit_capacity) ++audit_count_;
-}
 
 Decision Engine::evaluate(const PacketV4& packet) {
     Decision decision{Verdict::deny, Reason::invalid_packet, 0};
     if (!packet_valid(packet)) {
-        audit(packet, decision);
         return decision;
     }
     if (packet.fragmented) {
         decision.reason = Reason::fragment_unsupported;
-        audit(packet, decision);
         return decision;
     }
     for (size_t i = 0; i < rule_count_; ++i) {
         if (rule_matches(rules_[i], packet)) {
             decision = {Verdict::allow, Reason::allow_rule, rules_[i].id};
-            audit(packet, decision);
             return decision;
         }
     }
     decision.reason = Reason::default_deny;
-    audit(packet, decision);
     return decision;
 }
 
-bool Engine::audit_get_oldest(size_t index, AuditEvent& out) const {
-    if (index >= audit_count_) return false;
-    const size_t oldest = (audit_head_ + audit_capacity - audit_count_) % audit_capacity;
-    const size_t slot = (oldest + index) % audit_capacity;
-    out = audit_[slot];
-    return true;
-}
 
 const char* verdict_name(Verdict verdict) {
     return verdict == Verdict::allow ? "ALLOW" : "DENY";
@@ -172,15 +148,6 @@ bool self_test() {
     };
     if (e.add_allow_rule(invalid_any)) return false;
 
-    for (size_t i = 0; i < audit_capacity + 5; ++i) {
-        e.evaluate(wrong_dst);
-    }
-    if (e.audit_count() != audit_capacity) return false;
-    AuditEvent first{};
-    AuditEvent last{};
-    if (!e.audit_get_oldest(0, first)) return false;
-    if (!e.audit_get_oldest(audit_capacity - 1, last)) return false;
-    if (last.sequence <= first.sequence) return false;
     return true;
 }
 

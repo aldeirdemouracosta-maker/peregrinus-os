@@ -18,4 +18,9 @@ BarInfo bar_info(const Device& d,uint8_t index);
 uint16_t command_register(const Device& d);
 bool memory_space_enabled(const Device& d);
 bool enable_memory_busmaster(const Device& d);
+// Memory decoding only (no DMA). Bus mastering is granted separately, last, once the device
+// has been reset and its DMA rings point at memory the kernel owns.
+bool enable_memory_space(const Device& d);
+bool enable_bus_master(const Device& d);
+void disable_bus_master(const Device& d);
 }

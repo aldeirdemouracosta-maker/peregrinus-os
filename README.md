@@ -1,4 +1,4 @@
-# Peregrinus OS — Peregrinus Guard — Purgatório 0.1 Admission Gate
+# Peregrinus OS — Peregrinus Guard — Purgatório 0.1.1 Admission Gate
 
 Muro 1.0 closes the first firewall/network-foundation cycle on top of the Lean/Hardened 0.2.1 checkpoint. The production **SAFE** kernel remains passive: it parses and enforces policy only on in-memory/test frames and does not own a NIC, map an Ethernet BAR, enable NIC bus mastering, reserve DMA32 for networking, or transmit packets.
 
@@ -6,8 +6,8 @@ A separate **QEMU e1000 qualification profile** contains the live datapath. It i
 
 ## Release profile
 
-- CURRENT: generation **23**, security epoch **3**
-- LKG: Muro 1.0.1 generation **22**, security epoch **3**
+- CURRENT: Purgatório 0.1.1, generation **24**, security epoch **3**
+- LKG: Muro 1.0.1 generation **22**, security epoch **3** (see the LKG caveat in `docs/PURGATORIO-0.1.1.md`)
 - minimum security epoch: **3**
 - authoritative profile: `include/peregrinus/release_profile.h`
 
@@ -24,7 +24,7 @@ A separate **QEMU e1000 qualification profile** contains the live datapath. It i
 
 ## Explicit non-goals in 1.0
 
-No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU/qualification until runtime testing is performed.
+No IPv6, VLAN, DHCP, NAT, socket API, TCP implementation, interrupt-driven NIC path, physical-NIC enablement, or production hardware watchdog arming is claimed. The live e1000 profile is for QEMU qualification only (runtime-tested since 0.1.1, see below).
 
 See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and the historical `docs/LEAN-AUDIT.md`.
 
@@ -40,4 +40,25 @@ See `docs/MURO-1.0.md`, `docs/CAPABILITY-MATRIX.md`, `docs/ARCHITECTURE.md`, and
 
 ## Purgatório 0.1
 
-Purgatório 0.1 adds a bounded in-memory component quarantine/admission gate. It does **not** claim antivirus scanning, filesystem relocation, process isolation, or persistent quarantine. Components can be denied by identity after an integrity/signature/policy/malformed/manual-hold event. The registry is fixed at 32 entries; saturation fails closed for optional component admission. There is deliberately no runtime release/unquarantine API in this phase.
+Purgatório 0.1 adds a bounded in-memory component quarantine/admission gate. It does **not** claim antivirus scanning, filesystem relocation, process isolation, or persistent quarantine. Components can be denied by identity after an integrity/signature/policy/malformed/manual-hold event. The registry is fixed at 32 entries; saturation fails closed for optional component admission. There is deliberately no runtime release/unquarantine API in this phase. Since 0.1.1 admission is an **allowlist** (unknown or wrong-digest components are denied). No loader calls the gate yet.
+
+
+## Purgatório 0.1.1 — runtime-qualified correctness release
+
+Before 0.1.1 the profiles had only ever been tested host-side. Booting them revealed that the
+e1000 profile halted before starting its datapath and the recovery-live profile always
+panicked. 0.1.1 fixes those, an AHCI timeout that was reported as success, and hardens the
+kernel. Every claim below is exercised by `make check` or by `scripts/qemu-qualify.sh`
+(which runs in CI). Details: `docs/PURGATORIO-0.1.1.md`.
+
+## Build, test, boot
+
+```sh
+make                       # SAFE kernel
+make check                 # host regression (must exit 0)
+./scripts/fetch-limine.sh  # pinned, sha256-verified Limine 12.9.1 -> third_party/limine-dist/
+./scripts/qemu-qualify.sh  # boots every profile under QEMU (BIOS + UEFI) and checks the serial log
+./scripts/make-iso.sh safe # hybrid BIOS/UEFI ISO, also bootable from a USB stick (dd)
+./scripts/run-qemu.sh safe # interactive run, serial on stdio
+FUZZ_SECONDS=60 ./tests/fuzz.sh   # libFuzzer + ASan/UBSan over all untrusted-input parsers
+```

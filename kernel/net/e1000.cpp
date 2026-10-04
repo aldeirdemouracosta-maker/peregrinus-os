@@ -3,10 +3,12 @@
 #include "../config/features.hpp"
 #include "../mm/memory.hpp"
 #include "../mm/mmio.hpp"
+#include "../runtime/spin.hpp"
 #include "../console/serial.hpp"
 
 namespace peregrinus::net::e1000 {
 namespace {
+constexpr uint32_t REG_CTRL   = 0x00000;
 constexpr uint32_t REG_STATUS = 0x00008;
 constexpr uint32_t REG_ICR    = 0x000c0;
 constexpr uint32_t REG_IMC    = 0x000d8;
@@ -24,6 +26,8 @@ constexpr uint32_t REG_TDH    = 0x03810;
 constexpr uint32_t REG_TDT    = 0x03818;
 constexpr uint32_t REG_RAL0   = 0x05400;
 constexpr uint32_t REG_RAH0   = 0x05404;
+constexpr uint32_t CTRL_SLU   = 1u << 6;
+constexpr uint32_t CTRL_RST   = 1u << 26;
 constexpr uint32_t RCTL_EN    = 1u << 1;
 constexpr uint32_t RCTL_BAM   = 1u << 15;
 constexpr uint32_t RCTL_SECRC = 1u << 26;
@@ -77,9 +81,20 @@ InitStatus Driver::init_qemu_sandbox() {
     if (!dev) return InitStatus::device_not_found;
     const auto bar = pci::bar_info(*dev, 0);
     if (bar.io || bar.address == 0) return InitStatus::bar_invalid;
-    if (!pci::enable_memory_busmaster(*dev)) return InitStatus::pci_enable_failed;
+    // Order matters: decode MMIO, reset the NIC (dropping any DMA state left by firmware/PXE),
+    // program the rings, and only then grant bus mastering.
+    dev_ = dev;
+    pci::disable_bus_master(*dev);  // firmware may have left the NIC able to DMA
+    if (!pci::enable_memory_space(*dev)) return InitStatus::pci_enable_failed;
     mmio_ = static_cast<volatile uint8_t*>(mmio::map(bar.address, MMIO_BYTES));
     if (!mmio_) return InitStatus::mmio_failed;
+    reg_write(REG_IMC, 0xffffffffu);
+    reg_write(REG_RCTL, 0);
+    reg_write(REG_TCTL, 0);
+    reg_write(REG_CTRL, reg_read(REG_CTRL) | CTRL_RST);
+    if (!spin::until([&] { return (reg_read(REG_CTRL) & CTRL_RST) == 0; }, 100000)) return InitStatus::reset_failed;
+    reg_write(REG_IMC, 0xffffffffu);
+    (void)reg_read(REG_ICR);
 
     auto alloc_dma_page = [](uint64_t& phys, uint8_t*& virt) -> bool {
         phys = reinterpret_cast<uint64_t>(memory::alloc_dma32_page());
@@ -116,11 +131,6 @@ InitStatus Driver::init_qemu_sandbox() {
     mac_.bytes[5] = static_cast<uint8_t>(rah >> 8);
     if (!mac_nonzero(mac_)) return InitStatus::mac_invalid;
 
-    reg_write(REG_IMC, 0xffffffffu);
-    (void)reg_read(REG_ICR);
-    reg_write(REG_RCTL, 0);
-    reg_write(REG_TCTL, 0);
-
     reg_write(REG_RDBAL, static_cast<uint32_t>(rx_ring_phys_));
     reg_write(REG_RDBAH, static_cast<uint32_t>(rx_ring_phys_ >> 32));
     reg_write(REG_RDLEN, static_cast<uint32_t>(ring_count * sizeof(RxDescriptor)));
@@ -134,6 +144,8 @@ InitStatus Driver::init_qemu_sandbox() {
     reg_write(REG_TDT, 0);
 
     asm volatile("mfence" ::: "memory");
+    if (!pci::enable_bus_master(*dev)) return InitStatus::bus_master_failed;
+    reg_write(REG_CTRL, reg_read(REG_CTRL) | CTRL_SLU);
     reg_write(REG_RCTL, RCTL_EN | RCTL_BAM | RCTL_SECRC);
     reg_write(REG_TCTL, TCTL_EN | TCTL_PSP | TCTL_CT | TCTL_COLD);
     rx_next_ = 0;
@@ -147,9 +159,15 @@ size_t Driver::poll_rx(RxConsumer consumer, void* context, size_t budget) {
     if (!ready_ || !consumer) return 0;
     size_t processed = 0;
     while (processed < budget) {
-        RxDescriptor& d = rx_ring_[rx_next_];
-        asm volatile("lfence" ::: "memory");
+        volatile RxDescriptor& vd = rx_ring_[rx_next_];
+        // DMA-written: read once through volatile into a snapshot, then validate and use only
+        // the snapshot (no second read of length/status after validation).
+        RxDescriptor d{};
+        d.status = vd.status;
         if (!rx_complete(d)) break;
+        asm volatile("lfence" ::: "memory");
+        d.length = vd.length;
+        d.errors = vd.errors;
         if (rx_frame_valid(d)) {
             ++stats_.rx_frames;
             if (consumer(rx_buffers_[rx_next_], d.length, context)) ++stats_.rx_allowed_policy;
@@ -157,9 +175,9 @@ size_t Driver::poll_rx(RxConsumer consumer, void* context, size_t budget) {
         } else {
             ++stats_.rx_invalid;
         }
-        d.status = 0;
-        d.errors = 0;
-        d.length = 0;
+        vd.status = 0;
+        vd.errors = 0;
+        vd.length = 0;
         asm volatile("mfence" ::: "memory");
         reg_write(REG_RDT, static_cast<uint32_t>(rx_next_));
         rx_next_ = ring_next(rx_next_);
@@ -182,10 +200,24 @@ bool Driver::transmit(const uint8_t* frame, size_t bytes) {
     asm volatile("mfence" ::: "memory");
     const size_t next = ring_next(tx_next_);
     reg_write(REG_TDT, static_cast<uint32_t>(next));
-    if (!tx_wait_done(d, 500000)) { ++stats_.tx_failures; return false; }
+    if (!tx_wait_done(d, 500000)) {
+        // The tail already moved past this descriptor, so hardware and software no longer agree
+        // on the ring. Stop using the NIC instead of continuing on a desynchronised ring.
+        ++stats_.tx_failures;
+        fail_closed("e1000: TX completion timeout; NIC disabled (fail-closed)");
+        return false;
+    }
     tx_next_ = next;
     ++stats_.tx_frames;
     return true;
+}
+
+void Driver::fail_closed(const char* why) {
+    ready_ = false;
+    reg_write(REG_RCTL, 0);
+    reg_write(REG_TCTL, 0);
+    if (dev_) pci::disable_bus_master(*dev_);
+    serial::writeln(why);
 }
 
 uint32_t Driver::mmio_status() const { return reg_read(REG_STATUS); }
@@ -201,6 +233,8 @@ const char* init_status_name(InitStatus s) {
         case InitStatus::mmio_failed: return "MMIO-FAILED";
         case InitStatus::dma_failed: return "DMA-FAILED";
         case InitStatus::mac_invalid: return "MAC-INVALID";
+        case InitStatus::reset_failed: return "RESET-FAILED";
+        case InitStatus::bus_master_failed: return "BUS-MASTER-FAILED";
         case InitStatus::ready: return "READY";
     }
     return "UNKNOWN";

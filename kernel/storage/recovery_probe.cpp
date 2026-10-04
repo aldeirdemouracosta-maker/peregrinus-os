@@ -18,10 +18,10 @@ static bool matches(const recovery_anchor::AnchorInfo& a,const gpt::Guid& disk,c
 
 Result run(const gpt::Guid& disk_guid){
     Result r{};
-    if(!features::recovery_anchor_read_live){serial::writeln("Noe 1.0 recovery anchor probe: SKIPPED (safe default build)");return r;}
+    if(!features::recovery_anchor_read_live){serial::writeln("Recovery anchor probe: SKIPPED (safe default build)");return r;}
     r.attempted=true;
     const auto* sys=volume::by_role(volume::Role::system);const auto* rec=volume::by_role(volume::Role::recovery);const auto* data=volume::by_role(volume::Role::data);
-    if(!sys||!rec||!data){serial::writeln("Noe 1.0 recovery anchor probe: protected volume set incomplete");return r;}
+    if(!sys||!rec||!data){serial::writeln("Recovery anchor probe: protected volume set incomplete");return r;}
     r.recovery_volume_present=true;clear(first_sector,sizeof(first_sector));clear(last_sector,sizeof(last_sector));
     r.first_read=storage::read_recovery_anchor_sector(rec->device_index,rec->first_lba,rec->first_lba,rec->last_lba,first_sector);
     r.last_read=storage::read_recovery_anchor_sector(rec->device_index,rec->last_lba,rec->first_lba,rec->last_lba,last_sector);

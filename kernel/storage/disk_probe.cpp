@@ -40,12 +40,14 @@ static void report_table(Result& r,const gpt::TableInfo& t){
 
 Result run_qemu_gpt_probe(){
     Result r{}; g_table={}; g_table_valid=false;
-    if(!features::ahci_dma_read_live || !features::disposable_qemu_disk_only){ serial::writeln("Noe 1.0 redundant GPT probe: SKIPPED (safe default build)"); return r; }
+    // Read-only probe of GPT metadata sectors. Needed by every profile that evaluates the disk
+    // policy (QEMU DMA tests and the recovery-live qualification profile alike).
+    if(!features::ahci_dma_read_live){ serial::writeln("Redundant GPT probe: SKIPPED (no storage path in this build)"); return r; }
     r.attempted=true;
-    if(storage::inventory().count==0){ serial::writeln("Noe 1.0 redundant GPT probe: no storage device"); return r; }
+    if(storage::inventory().count==0){ serial::writeln("Redundant GPT probe: no storage device"); return r; }
     const auto& dev=storage::inventory().devices[0]; r.device_identified=dev.identified; r.logical_sector_bytes=dev.info.logical_sector_bytes; r.device_last_lba=dev.info.last_lba;
-    if(!dev.identified){ serial::writeln("Noe 1.0 redundant GPT probe: IDENTIFY DEVICE unavailable/invalid"); return r; }
-    if(dev.info.logical_sector_bytes!=512u || dev.info.last_lba<67u){ serial::writeln("Noe 1.0 redundant GPT probe: unsupported sector geometry"); return r; }
+    if(!dev.identified){ serial::writeln("Redundant GPT probe: IDENTIFY DEVICE unavailable/invalid"); return r; }
+    if(dev.info.logical_sector_bytes!=512u || dev.info.last_lba<67u){ serial::writeln("Redundant GPT probe: unsupported sector geometry"); return r; }
 
     clear_bytes(g_primary_sector,sizeof(g_primary_sector)); clear_bytes(g_backup_sector,sizeof(g_backup_sector));
     if(storage::read_sector(0,1,g_primary_sector)) r.primary_header_read=true;

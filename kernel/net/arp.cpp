@@ -19,14 +19,22 @@ Status parse(const uint8_t* frame,size_t bytes,Packet& out){
 }
 size_t build_reply(const Packet& req,const e1000::MacAddress& local_mac,uint32_t local_ip,uint8_t* out,size_t cap){
     if(!out||cap<42||req.opcode!=1||req.target_ip!=local_ip)return 0;
+    // Do not answer requests whose sender is a group/zero MAC or claims our own address
+    // (reflection and address-conflict spoofing).
+    uint8_t any=0;for(size_t i=0;i<6;++i)any|=req.sender_mac.bytes[i];
+    if(any==0||(req.sender_mac.bytes[0]&1u)!=0||req.sender_ip==local_ip||(req.sender_ip>>28)==0xeu||req.sender_ip==0xffffffffu)return 0;
     for(size_t i=0;i<42;++i)out[i]=0;
     mac_copy(out,req.sender_mac);mac_copy(out+6,local_mac);put16(out+12,0x0806);
     uint8_t* a=out+14;put16(a,1);put16(a+2,0x0800);a[4]=6;a[5]=4;put16(a+6,2);
     mac_copy(a+8,local_mac);put32(a+14,local_ip);mac_copy(a+18,req.sender_mac);put32(a+24,req.sender_ip);return 42;
 }
 bool self_test(){
-    uint8_t f[42]{}; for(int i=0;i<6;++i){f[i]=0xff;f[6+i]=uint8_t(i+1);}put16(f+12,0x0806);uint8_t* a=f+14;put16(a,1);put16(a+2,0x0800);a[4]=6;a[5]=4;put16(a+6,1);for(int i=0;i<6;++i)a[8+i]=uint8_t(i+1);put32(a+14,0x0a000202);put32(a+24,0x0a00020f);
+    uint8_t f[42]{}; for(int i=0;i<6;++i){f[i]=0xff;f[6+i]=uint8_t(i+1);}put16(f+12,0x0806);uint8_t* a=f+14;put16(a,1);put16(a+2,0x0800);a[4]=6;a[5]=4;put16(a+6,1);for(int i=0;i<6;++i)a[8+i]=uint8_t(i+1);a[8]=0x02;put32(a+14,0x0a000202);put32(a+24,0x0a00020f);
     Packet p{};if(parse(f,sizeof(f),p)!=Status::ok||p.opcode!=1||p.target_ip!=0x0a00020f)return false;
-    e1000::MacAddress m{{0x52,0x54,0,0x12,0x34,0x56}};uint8_t r[64]{};size_t n=build_reply(p,m,0x0a00020f,r,sizeof(r));if(n!=42)return false;Packet q{};if(parse(r,n,q)!=Status::ok||q.opcode!=2||q.sender_ip!=0x0a00020f||q.target_ip!=0x0a000202)return false;return true;
+    e1000::MacAddress m{{0x52,0x54,0,0x12,0x34,0x56}};uint8_t r[64]{};size_t n=build_reply(p,m,0x0a00020f,r,sizeof(r));if(n!=42)return false;Packet q{};if(parse(r,n,q)!=Status::ok||q.opcode!=2||q.sender_ip!=0x0a00020f||q.target_ip!=0x0a000202)return false;
+    Packet bad=p;bad.sender_mac.bytes[0]=0x01;if(build_reply(bad,m,0x0a00020f,r,sizeof(r))!=0)return false;  // multicast sender MAC
+    bad=p;bad.sender_mac=e1000::MacAddress{};if(build_reply(bad,m,0x0a00020f,r,sizeof(r))!=0)return false;  // zero MAC
+    bad=p;bad.sender_ip=0x0a00020f;if(build_reply(bad,m,0x0a00020f,r,sizeof(r))!=0)return false;         // claims our IP
+    return true;
 }
 }

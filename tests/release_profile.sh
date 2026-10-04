@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 P="$ROOT/scripts/release-profile.py"
-[[ "$($P current_generation)" == 23 ]]
+[[ "$($P current_generation)" == 24 ]]
 [[ "$($P lkg_generation)" == 22 ]]
 [[ "$($P current_epoch)" == 3 ]]
 [[ "$($P lkg_epoch)" == 3 ]]

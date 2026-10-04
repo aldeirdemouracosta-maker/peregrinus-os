@@ -1,14 +1,17 @@
-Peregrinus OS — Purgatorio 0.1 validation
+Peregrinus OS — Purgatorio 0.1.1 validation (generation 24, security epoch 3)
 
-PASS: make check (full Noe/Jo/Muro regression + Purgatorio quarantine test)
-PASS: SAFE/current build, clang/ld.lld, -Werror
-PASS: recovery-live build
-PASS: e1000-QEMU qualification build
-PASS: invalid combined e1000 + recovery-write profile rejected at compile time
-PASS: safe/live EFI controllers built
-PASS: SAFE ELF has no undefined external symbols
-PASS: e1000 live path requires QEMU/KVM-style hypervisor before NIC ownership
-PASS: Purgatorio fixed quarantine registry and fail-closed saturation test
-NOT RUN: QEMU/OVMF/e1000 runtime
-NOT RUN: QEMU/OVMF/swtpm runtime
-NOT RUN: physical X79/iTCO/e1000 hardware
+PASS: make check (host regression, all tests -Werror via tests/host-cxx.sh)
+PASS: profile matrix: SAFE / e1000 / recovery-live / QEMU commit; live profiles mutually exclusive
+PASS: AHCI timeout/task-file error -> failure + controller poisoned (emulated HBA)
+PASS: e1000 reset-before-bus-master and TX-timeout fail-closed (emulated NIC)
+PASS: QEMU SAFE boot, legacy BIOS (passive boot, ACPI via RSDT, stack protector active)
+PASS: QEMU SAFE boot, UEFI/OVMF
+PASS: QEMU UEFI trusted boot controller -> Limine -> SAFE kernel (Secure Boot off: CURRENT-only path)
+PASS: QEMU e1000 datapath on the wire: ARP reply, ICMP echo (fresh TTL), UDP denied, burst guard, other sources served
+PASS: QEMU recovery-commit-test and recovery-live: GPT read, journal success committed and verified on disk
+PASS: QEMU kernel stack overflow -> guard page -> #DF on IST reported (no triple fault)
+PASS: libFuzzer + ASan/UBSan over network/GPT/IDENTIFY/journal parsers (CI: 120 s per run)
+PASS: artifacts rebuilt bit-for-bit by scripts/make-artifacts.sh (CI-enforced)
+NOT RUN: QEMU + swtpm (TPM anchor path of the UEFI controller with Secure Boot on)
+NOT RUN: physical X79/iTCO/e1000/TPM hardware
+KNOWN: LKG gen22 recovery-live artifact predates the recovery-live fix and cannot confirm a boot

@@ -54,13 +54,18 @@ void init(limine_rsdp_response* rsp, limine_hhdm_response* hhdm){
     g_rsdp=g_mcfg=g_madt=false; g_mcfg_info={}; g_madt_info={}; g_hhdm=hhdm?hhdm->offset:0;
     if(!rsp || !rsp->address){ serial::writeln("ACPI: RSDP unavailable"); return; }
     auto* r=reinterpret_cast<const Rsdp20*>(rsp->address); g_rsdp=true;
-    if(r->revision<2 || !r->xsdt){ serial::writeln("ACPI: RSDP found; XSDT unavailable"); return; }
-    auto* x=phys_sdt(r->xsdt);
-    if(!x || x->length<sizeof(SdtHeader) || !sig4(x->sig,"XSDT") || !checksum(x,x->length)){ serial::writeln("ACPI: invalid XSDT"); return; }
-    uint32_t count=(x->length-sizeof(SdtHeader))/8;
-    auto* entries=reinterpret_cast<const uint64_t*>(reinterpret_cast<const uint8_t*>(x)+sizeof(SdtHeader));
+    // ACPI 2.0+ publishes the XSDT (64-bit entries); ACPI 1.0 firmware (and SeaBIOS) only the
+    // RSDT (32-bit entries). Use the XSDT when present, otherwise fall back to the RSDT.
+    const bool use_xsdt=r->revision>=2&&r->xsdt;
+    if(!use_xsdt&&!r->rsdt){ serial::writeln("ACPI: RSDP found; no XSDT/RSDT"); return; }
+    auto* x=phys_sdt(use_xsdt?r->xsdt:uint64_t(r->rsdt));
+    if(!x || x->length<sizeof(SdtHeader) || !sig4(x->sig,use_xsdt?"XSDT":"RSDT") || !checksum(x,x->length)){ serial::writeln(use_xsdt?"ACPI: invalid XSDT":"ACPI: invalid RSDT"); return; }
+    const uint32_t entry_bytes=use_xsdt?8u:4u;
+    const uint32_t count=(x->length-sizeof(SdtHeader))/entry_bytes;
+    const uint8_t* entries=reinterpret_cast<const uint8_t*>(x)+sizeof(SdtHeader);
     for(uint32_t i=0;i<count;++i){
-        auto* h=phys_sdt(entries[i]);
+        uint64_t phys=0;for(uint32_t b=0;b<entry_bytes;++b)phys|=uint64_t(entries[i*entry_bytes+b])<<(8*b);
+        auto* h=phys_sdt(phys);
         if(!h || h->length<sizeof(SdtHeader) || !checksum(h,h->length)) continue;
         if(sig4(h->sig,"MCFG")) parse_mcfg(h);
         else if(sig4(h->sig,"APIC")) parse_madt(h);

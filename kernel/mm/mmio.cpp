@@ -34,7 +34,13 @@ void* map(uint64_t phys,size_t bytes,Cache){
     uint64_t vbase=align_up(g.next_virtual);
     if(vbase<WINDOW_BASE || span>WINDOW_SIZE || vbase-WINDOW_BASE>WINDOW_SIZE-span) return nullptr;
     const uint64_t flags=RW|PWT|PCD|(g.nx_enabled?NX:0); // PAT index 3 => UC, NX prevents execution from device memory.
-    for(uint64_t x=0;x<span;x+=PAGE) if(!paging::map_page(vbase+x,pbase+x,flags)) return nullptr;
+    for(uint64_t x=0;x<span;x+=PAGE){
+        if(!paging::map_page(vbase+x,pbase+x,flags)){
+            // Roll back the pages of this request so the window is not left half-mapped.
+            for(uint64_t y=0;y<x;y+=PAGE)(void)paging::unmap_page(vbase+y);
+            return nullptr;
+        }
+    }
     g.next_virtual=vbase+span; ++g.mappings;
     char h[19];format::hex64(phys,h);serial::write("MMIO mapped phys ");serial::write(h);format::hex64(vbase+off,h);serial::write(" -> virt ");serial::writeln(h);
     return reinterpret_cast<void*>(static_cast<uintptr_t>(vbase+off));

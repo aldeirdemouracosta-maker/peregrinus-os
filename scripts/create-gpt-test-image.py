@@ -29,13 +29,14 @@ def put_entry(entries, idx, type_guid, unique_guid, first, last, name):
     entries[off+56:off+56+len(raw)]=raw
 
 def main():
-    ap=argparse.ArgumentParser(description='Create disposable GPT image for Peregrinus OS Muro 1.0.1 Hardened recovery test')
-    ap.add_argument('path', nargs='?', default='build/peregrinus-jo-1.0-testdisk.img')
+    ap=argparse.ArgumentParser(description='Create a disposable GPT image for Peregrinus OS recovery qualification')
+    ap.add_argument('path', nargs='?', default='build/peregrinus-testdisk.img')
     ap.add_argument('--mib', type=int, default=64)
+    ap.add_argument('--pending-current', action='store_true', help='write the journal as the trusted pre-boot controller leaves it: one pending CURRENT attempt (needed by recovery-commit kernels)')
     a=ap.parse_args()
     size=a.mib*1024*1024
     total=size//SECTOR
-    if total < 65536: raise SystemExit('image too small for Muro 1.0.1 layout')
+    if total < 65536: raise SystemExit('image too small for the Peregrinus recovery layout')
     os.makedirs(os.path.dirname(a.path) or '.', exist_ok=True)
     with open(a.path,'wb') as f: f.truncate(size)
 
@@ -98,7 +99,9 @@ def main():
         return h
 
     ra=recovery_anchor()
-    rj=recovery_journal()
+    # The pre-boot controller records an attempt (attempts=1, sequence+1) before chainloading;
+    # a kernel may only commit success on top of such a pending attempt.
+    rj=recovery_journal(sequence=2,current_attempts=1) if a.pending_current else recovery_journal()
     with open(a.path,'r+b') as f:
         f.seek(0); f.write(mbr)
         f.seek(SECTOR); f.write(ph)

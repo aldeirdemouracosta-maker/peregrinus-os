@@ -3,7 +3,7 @@
 ## Limine
 
 - Upstream: `limine-bootloader/limine`
-- Pinned release for distributable boot images: **v12.9.1**.
+- Pinned release for distributable boot images: **v12.9.1**, fetched as the release tarball `limine-12.9.1.tar.xz` (SHA-256 `c1096fdd506487fbd92c113baa9e153a9973cf766483cc3928e13fd29b976b32`) and built by `scripts/fetch-limine.sh` into `third_party/limine-dist/` (not committed).
 - The kernel source package carries only the small protocol/header subset needed by Peregrinus.
 - Secure Boot deployment uses a pinned Limine EFI binary whose configuration BLAKE2b hash is enrolled before that EFI binary is signed.
 - Muro 1.0 retains the trusted-boot path built on Limine's documented Boot Loader Interface handling (`LoaderEntryOneShot`) and measured-boot support.

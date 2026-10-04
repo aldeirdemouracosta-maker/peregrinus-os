@@ -8,6 +8,7 @@ struct ProbeResult {
     uint32_t implemented_ports,present_ports,sata_ports,satapi_ports;
     uint32_t host_capabilities,host_capabilities2,version,command_slots;
     bool bios_os_handoff_supported,bios_owned,os_owned,bios_busy,dma_workspace_ready;
+    bool poisoned; // a command timed out or failed after the doorbell; all further commands refused
     PortInfo ports[32];
 };
 struct DmaSelfTestResult { bool layout_ok,safety_gate_ok,live_enabled,workspace_ready; uint32_t command_header_size,command_table_size; };

@@ -62,10 +62,10 @@ static CommitResult persist(const gpt::Guid& disk_guid,const Loaded& x,const per
 
 Result run(const gpt::Guid& disk_guid){
     Result r{};
-    if(!features::recovery_journal_read_live){serial::writeln("Muro 1.0.1 recovery journal: SKIPPED (safe default build)");return r;}
+    if(!features::recovery_journal_read_live){serial::writeln("Recovery journal: SKIPPED (safe default build)");return r;}
     r.attempted=true;
     const auto x=load(disk_guid);
-    if(!x.rec){serial::writeln("Muro 1.0.1 recovery journal: IA_RECOVERY unavailable/too small");return r;}
+    if(!x.rec){serial::writeln("Recovery journal: IA_RECOVERY unavailable/too small");return r;}
     r.recovery_volume_present=true;r.a_read=x.a_read;r.b_read=x.b_read;r.assessment=x.assessment;
     serial::write("Recovery journal A/B selection: ");serial::writeln(recovery_journal::copy_name(r.assessment.selected));
     if(r.assessment.split_brain){serial::writeln("RECOVERY JOURNAL: SPLIT-BRAIN; writes blocked");return r;}

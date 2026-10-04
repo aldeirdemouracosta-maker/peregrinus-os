@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CXX=${CXX:-clang++}; TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
-$CXX -std=c++23 -O2 -Ikernel tests/watchdog_test.cpp kernel/security/watchdog.cpp -o "$TMP/t"
-"$TMP/t"; echo 'PASS: logical boot watchdog sequencing.'
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+. "$ROOT/tests/host-cxx.sh"
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+host_cxx "$ROOT/tests/watchdog_test.cpp" "$ROOT/kernel/security/watchdog.cpp" -o "$TMP/t"
+"$TMP/t"
+echo 'PASS: logical boot watchdog sequencing.'

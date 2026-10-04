@@ -8,12 +8,12 @@ namespace peregrinus::net::sandbox {
 namespace { Service g_service{}; }
 
 bool Service::init(){
-    stats_={};datapath_.reset();nic_=&e1000::driver();const auto st=nic_->init_qemu_sandbox();serial::write("Muro e1000 sandbox init: ");serial::writeln(e1000::init_status_name(st));if(st!=e1000::InitStatus::ready)return false;mac_=nic_->mac();
+    stats_={};datapath_.reset();nic_=&e1000::driver();const auto st=nic_->init_qemu_sandbox();serial::write("e1000 sandbox init: ");serial::writeln(e1000::init_status_name(st));if(st!=e1000::InitStatus::ready)return false;mac_=nic_->mac();
     using namespace security::firewall;
     const AllowRuleV4 icmp_in{3001,true,Direction::ingress,Protocol::icmp,0,0,local_ip_,32,0,65535,0,65535};
     const AllowRuleV4 icmp_out{3002,true,Direction::egress,Protocol::icmp,local_ip_,32,0,0,0,65535,0,65535};
     if(!datapath_.add_allow_rule(icmp_in)||!datapath_.add_allow_rule(icmp_out))return false;
-    serial::writeln("Muro network qualification: static 10.0.2.15, ARP + ICMP echo only");return true;
+    serial::writeln("Network qualification: static 10.0.2.15, ARP + ICMP echo only");return true;
 }
 
 bool Service::consume(const uint8_t* frame,size_t bytes,void* context){return static_cast<Service*>(context)->on_frame(frame,bytes);}

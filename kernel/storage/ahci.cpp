@@ -5,6 +5,7 @@
 #include "../console/serial.hpp"
 #include "../console/format.hpp"
 #include "../config/features.hpp"
+#include "../runtime/spin.hpp"
 
 namespace peregrinus::ahci {
 namespace {
@@ -17,7 +18,7 @@ struct __attribute__((packed)) FisRegH2d { uint8_t fis_type,pmport_c,command,fea
 static_assert(sizeof(HbaCmdHeader)==32); static_assert(sizeof(HbaCmdTable)==144); static_assert(sizeof(FisRegH2d)==20);
 struct DmaWorkspace { bool ready; uint64_t clb_phys,fis_phys,tbl_phys,data_phys; HbaCmdHeader* cl; uint8_t* rfis; HbaCmdTable* table; uint8_t* data; };
 
-static ProbeResult g{}; static DmaWorkspace ws{}; static volatile HbaMem* g_hba=nullptr;
+static ProbeResult g{}; static DmaWorkspace ws{}; static volatile HbaMem* g_hba=nullptr; static bool g_poisoned=false;
 static constexpr uint32_t SATA_SIG_ATA=0x00000101u,SATA_SIG_ATAPI=0xEB140101u,SATA_SIG_SEMB=0xC33C0101u,SATA_SIG_PM=0x96690101u;
 static constexpr uint8_t FIS_TYPE_REG_H2D=0x27,ATA_CMD_READ_DMA_EXT=0x25,ATA_CMD_WRITE_DMA_EXT=0x35,ATA_CMD_FLUSH_EXT=0xEA,ATA_CMD_IDENTIFY_DEVICE=0xEC;
 static constexpr uint32_t HBA_PxCMD_ST=1u<<0,HBA_PxCMD_FRE=1u<<4,HBA_PxCMD_FR=1u<<14,HBA_PxCMD_CR=1u<<15,HBA_PxIS_TFES=1u<<30;
@@ -28,7 +29,7 @@ static const char* kind_name(PortKind k){switch(k){case PortKind::sata:return "S
 static void zero(void* p,uint32_t n){auto* b=(uint8_t*)p;for(uint32_t i=0;i<n;++i)b[i]=0;}
 static void copy512(void* d0,const void* s0){auto* d=(uint8_t*)d0;auto* s=(const uint8_t*)s0;for(uint32_t i=0;i<512;++i)d[i]=s[i];}
 static const pci::Device* controller_device(){const auto* ds=pci::devices();for(uint32_t i=0;i<pci::device_count();++i){const auto& d=ds[i];if(d.class_code==0x01&&d.subclass==0x06&&d.prog_if==0x01)return &d;}return nullptr;}
-static bool wait_cmd_clear(volatile HbaPort& p,uint32_t mask,uint32_t spins){while(spins--){if((p.cmd&mask)==0)return true;asm volatile("pause");}return false;}
+static bool wait_cmd_clear(volatile HbaPort& p,uint32_t mask,uint32_t spins){return spin::until([&]{return (p.cmd&mask)==0;},spins);}
 static bool stop_port(volatile HbaPort& p){p.cmd&=~HBA_PxCMD_ST;p.cmd&=~HBA_PxCMD_FRE;return wait_cmd_clear(p,HBA_PxCMD_FR|HBA_PxCMD_CR,1000000);}
 static bool start_port(volatile HbaPort& p){if(!wait_cmd_clear(p,HBA_PxCMD_CR,1000000))return false;p.cmd|=HBA_PxCMD_FRE;p.cmd|=HBA_PxCMD_ST;return true;}
 static int find_slot(volatile HbaPort& p){uint32_t slots=p.sact|p.ci;uint32_t n=g.command_slots?g.command_slots:1;if(n>32)n=32;for(uint32_t i=0;i<n;++i)if((slots&(1u<<i))==0)return int(i);return -1;}
@@ -48,8 +49,8 @@ static bool take_ownership(){
     if(!g.bios_os_handoff_supported) return true;
     uint32_t v=g_hba->bohc;g.bios_owned=(v&BOHC_BOS)!=0;g.os_owned=(v&BOHC_OOS)!=0;g.bios_busy=(v&BOHC_BB)!=0;
     if(!g.bios_owned&&!g.bios_busy){g_hba->bohc=v|BOHC_OOS;g.os_owned=true;return true;}
-    g_hba->bohc=v|BOHC_OOS;uint32_t spins=5000000;
-    while(spins--){v=g_hba->bohc;if((v&(BOHC_BOS|BOHC_BB))==0){g.bios_owned=false;g.bios_busy=false;g.os_owned=(v&BOHC_OOS)!=0;return g.os_owned;}asm volatile("pause");}
+    g_hba->bohc=v|BOHC_OOS;
+    if(spin::until([&]{v=g_hba->bohc;return (v&(BOHC_BOS|BOHC_BB))==0;},5000000)){g.bios_owned=false;g.bios_busy=false;g.os_owned=(v&BOHC_OOS)!=0;return g.os_owned;}
     serial::writeln("AHCI: BIOS/OS handoff timeout");return false;
 }
 static bool prepare_live(uint8_t port_index,volatile HbaPort*& port,int& slot){
@@ -64,51 +65,43 @@ static bool prepare_live(uint8_t port_index,volatile HbaPort*& port,int& slot){
     slot=find_slot(*port);
     return slot>=0;
 }
-static bool issue_512_data_in(uint8_t port_index,uint8_t command,uint64_t lba,bool lba48,void* out512){
-    if(!out512) return false;
-    volatile HbaPort* port=nullptr;
-    int slot=-1;
-    if(!prepare_live(port_index,port,slot)) return false;
-    HbaCmdHeader& hdr=ws.cl[slot];hdr.flags=5u;hdr.prdtl=1;hdr.prdbc=0;hdr.ctba=(uint32_t)ws.tbl_phys;hdr.ctbau=(uint32_t)(ws.tbl_phys>>32);
-    HbaCmdTable* ct=ws.table;zero(ct,sizeof(HbaCmdTable));ct->prdt[0].dba=(uint32_t)ws.data_phys;ct->prdt[0].dbau=(uint32_t)(ws.data_phys>>32);ct->prdt[0].dbc_i=(512u-1u);
+enum class Transfer : uint8_t { none, data_in, data_out };
+// One command, one 512-byte sector at most. Any timeout or task-file error after the doorbell
+// leaves the command state unknown (the HBA may still DMA into the workspace), so the
+// controller is poisoned: every later command is refused (fail-closed) until reboot.
+static bool issue(uint8_t port_index,uint8_t command,uint64_t lba,bool lba48,Transfer t,void* buf512){
+    if(g_poisoned)return false;
+    if(t!=Transfer::none&&!buf512)return false;
+    if(t==Transfer::data_out&&!features::recovery_journal_write_live)return false;
+    volatile HbaPort* port=nullptr;int slot=-1;
+    if(!prepare_live(port_index,port,slot))return false;
+    if(t==Transfer::data_out)copy512(ws.data,buf512);
+    HbaCmdHeader& hdr=ws.cl[slot];hdr.flags=(uint16_t)(5u|(t==Transfer::data_out?(1u<<6):0u));hdr.prdtl=t==Transfer::none?0:1;hdr.prdbc=0;hdr.ctba=(uint32_t)ws.tbl_phys;hdr.ctbau=(uint32_t)(ws.tbl_phys>>32);
+    HbaCmdTable* ct=ws.table;zero(ct,sizeof(HbaCmdTable));
+    if(t!=Transfer::none){ct->prdt[0].dba=(uint32_t)ws.data_phys;ct->prdt[0].dbau=(uint32_t)(ws.data_phys>>32);ct->prdt[0].dbc_i=(512u-1u);}
     auto* fis=(FisRegH2d*)ct->cfis;fis->fis_type=FIS_TYPE_REG_H2D;fis->pmport_c=1u<<7;fis->command=command;
     if(lba48){fis->device=1u<<6;fis->lba0=(uint8_t)lba;fis->lba1=(uint8_t)(lba>>8);fis->lba2=(uint8_t)(lba>>16);fis->lba3=(uint8_t)(lba>>24);fis->lba4=(uint8_t)(lba>>32);fis->lba5=(uint8_t)(lba>>40);fis->count=1;}
-    uint32_t spins=1000000;while((port->tfd&(ATA_DEV_BUSY|ATA_DEV_DRQ))&&spins--)asm volatile("pause");if(!spins)return false;
-    port->is=0xFFFFFFFFu;asm volatile("mfence":::"memory");port->ci|=(1u<<slot);spins=5000000;
-    while(spins--){if((port->ci&(1u<<slot))==0)break;if(port->is&HBA_PxIS_TFES)return false;asm volatile("pause");}
-    if(!spins||(port->is&HBA_PxIS_TFES)) return false;
+    // Before the doorbell nothing is in flight: a busy device is a plain refusal.
+    if(!spin::until([&]{return (port->tfd&(ATA_DEV_BUSY|ATA_DEV_DRQ))==0;},1000000))return false;
+    port->is=port->is;asm volatile("mfence":::"memory");port->ci|=(1u<<slot); // W1C: clear only asserted status bits
+    const uint32_t bit=1u<<slot;
+    const bool completed=spin::until([&]{return (port->ci&bit)==0||(port->is&HBA_PxIS_TFES)!=0;},5000000);
+    if(!completed||(port->is&HBA_PxIS_TFES)!=0||(port->ci&bit)!=0){
+        g_poisoned=true;g.poisoned=true;(void)stop_port(*port);
+        serial::writeln("AHCI: command timeout/error; controller POISONED (fail-closed)");
+        return false;
+    }
     asm volatile("mfence":::"memory");
-    copy512(out512,ws.data);
+    if(t==Transfer::data_in)copy512(buf512,ws.data);
     return true;
 }
-static bool issue_512_data_out(uint8_t port_index,uint8_t command,uint64_t lba,const void* in512){
-    if(!in512||!features::recovery_journal_write_live) return false;
-    volatile HbaPort* port=nullptr;int slot=-1;if(!prepare_live(port_index,port,slot))return false;
-    copy512(ws.data,in512);
-    HbaCmdHeader& hdr=ws.cl[slot];hdr.flags=(uint16_t)(5u|(1u<<6));hdr.prdtl=1;hdr.prdbc=0;hdr.ctba=(uint32_t)ws.tbl_phys;hdr.ctbau=(uint32_t)(ws.tbl_phys>>32);
-    HbaCmdTable* ct=ws.table;zero(ct,sizeof(HbaCmdTable));ct->prdt[0].dba=(uint32_t)ws.data_phys;ct->prdt[0].dbau=(uint32_t)(ws.data_phys>>32);ct->prdt[0].dbc_i=(512u-1u);
-    auto* fis=(FisRegH2d*)ct->cfis;fis->fis_type=FIS_TYPE_REG_H2D;fis->pmport_c=1u<<7;fis->command=command;fis->device=1u<<6;fis->lba0=(uint8_t)lba;fis->lba1=(uint8_t)(lba>>8);fis->lba2=(uint8_t)(lba>>16);fis->lba3=(uint8_t)(lba>>24);fis->lba4=(uint8_t)(lba>>32);fis->lba5=(uint8_t)(lba>>40);fis->count=1;
-    uint32_t spins=1000000;while((port->tfd&(ATA_DEV_BUSY|ATA_DEV_DRQ))&&spins--)asm volatile("pause");if(!spins)return false;
-    port->is=0xFFFFFFFFu;asm volatile("mfence":::"memory");port->ci|=(1u<<slot);spins=5000000;
-    while(spins--){if((port->ci&(1u<<slot))==0)break;if(port->is&HBA_PxIS_TFES)return false;asm volatile("pause");}
-    return spins!=0&&(port->is&HBA_PxIS_TFES)==0;
-}
-static bool issue_no_data(uint8_t port_index,uint8_t command){
-    if(!features::recovery_journal_write_live)return false;
-    volatile HbaPort* port=nullptr;
-    int slot=-1;
-    if(!prepare_live(port_index,port,slot))return false;
-    HbaCmdHeader& hdr=ws.cl[slot];hdr.flags=5u;hdr.prdtl=0;hdr.prdbc=0;hdr.ctba=(uint32_t)ws.tbl_phys;hdr.ctbau=(uint32_t)(ws.tbl_phys>>32);
-    HbaCmdTable* ct=ws.table;zero(ct,sizeof(HbaCmdTable));auto* fis=(FisRegH2d*)ct->cfis;fis->fis_type=FIS_TYPE_REG_H2D;fis->pmport_c=1u<<7;fis->command=command;
-    uint32_t spins=1000000;while((port->tfd&(ATA_DEV_BUSY|ATA_DEV_DRQ))&&spins--)asm volatile("pause");if(!spins)return false;
-    port->is=0xFFFFFFFFu;asm volatile("mfence":::"memory");port->ci|=(1u<<slot);spins=5000000;
-    while(spins--){if((port->ci&(1u<<slot))==0)break;if(port->is&HBA_PxIS_TFES)return false;asm volatile("pause");}
-    return spins!=0&&(port->is&HBA_PxIS_TFES)==0;
-}
+static bool issue_512_data_in(uint8_t port_index,uint8_t command,uint64_t lba,bool lba48,void* out512){return issue(port_index,command,lba,lba48,Transfer::data_in,out512);}
+static bool issue_512_data_out(uint8_t port_index,uint8_t command,uint64_t lba,const void* in512){return issue(port_index,command,lba,true,Transfer::data_out,const_cast<void*>(in512));}
+static bool issue_no_data(uint8_t port_index,uint8_t command){if(!features::recovery_journal_write_live)return false;return issue(port_index,command,0,false,Transfer::none,nullptr);}
 }
 
 ProbeResult inspect_readonly(){
-    g={};ws={};g_hba=nullptr;g.readonly_safe=true;const auto* ds=pci::devices();const pci::Device* ctl=nullptr;
+    g={};ws={};g_hba=nullptr;g_poisoned=false;g.readonly_safe=true;const auto* ds=pci::devices();const pci::Device* ctl=nullptr;
     for(uint32_t i=0;i<pci::device_count();++i){const auto& d=ds[i];if(d.class_code==0x01&&d.subclass==0x06&&d.prog_if==0x01){++g.controllers;if(!g.abar){g.abar=pci::bar_info(d,5).address;ctl=&d;}}}
     char n[24],h[19];format::dec64(g.controllers,n);serial::write("AHCI controllers: ");serial::writeln(n);
     if(!g.abar||!ctl){serial::writeln("AHCI: ABAR unavailable");return g;}

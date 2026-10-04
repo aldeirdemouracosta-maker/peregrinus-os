@@ -18,7 +18,7 @@ RELEASE_TAG := $(shell $(PROFILE) tag)
 CPPFLAGS := -Iinclude -Ikernel
 EXTRA_CPPFLAGS ?=
 SEAL_LABEL ?= $(RELEASE_TAG)
-CXXFLAGS := -std=c++23 -ffreestanding -fno-exceptions -fno-rtti -fno-stack-protector -fno-pic -mno-red-zone -mcmodel=kernel -O2 -Wall -Wextra -Werror -mgeneral-regs-only -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-threadsafe-statics -ffunction-sections -fdata-sections
+CXXFLAGS := -std=c++23 -ffreestanding -fno-exceptions -fno-rtti -fstack-protector-strong -mstack-protector-guard=global -fno-pic -mno-red-zone -mcmodel=kernel -O2 -Wall -Wextra -Werror -mgeneral-regs-only -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-threadsafe-statics -ffunction-sections -fdata-sections
 ASFLAGS  := -ffreestanding -mno-red-zone -mgeneral-regs-only -ffunction-sections -fdata-sections
 LDFLAGS  := -nostdlib -z max-page-size=0x1000 --gc-sections -T linker.ld
 
@@ -28,6 +28,7 @@ CPP_SRCS := \
 	kernel/arch/x86_64/exceptions.cpp \
 	kernel/arch/x86_64/gdt.cpp \
 	kernel/arch/x86_64/idt.cpp \
+	kernel/arch/x86_64/kstack.cpp \
 	kernel/boot/limine_requests.cpp \
 	kernel/console/format.cpp \
 	kernel/console/framebuffer.cpp \
@@ -38,7 +39,6 @@ CPP_SRCS := \
 	kernel/mm/mmio.cpp \
 	kernel/mm/paging.cpp \
 	kernel/net/ethernet_ipv4.cpp \
-	kernel/net/hook.cpp \
 	kernel/net/nic_probe.cpp \
 	kernel/panic/panic.cpp \
 	kernel/pci/pci.cpp \
@@ -51,6 +51,7 @@ CPP_SRCS := \
 	kernel/security/sha256.cpp \
 	kernel/security/watchdog.cpp \
 	kernel/runtime/memory.cpp \
+	kernel/runtime/stack_protector.cpp \
 	kernel/storage/ahci.cpp \
 	kernel/storage/boot_policy.cpp \
 	kernel/storage/disk_probe.cpp \
@@ -83,13 +84,17 @@ OBJS := $(CPP_SRCS:%.cpp=$(BUILD)/%.o) $(EXTRA_CPP_SRCS:%.cpp=$(BUILD)/%.o) $(AS
 
 all: $(KERNEL)
 
-$(BUILD)/%.o: %.cpp include/peregrinus/release_profile.h
+# -MMD -MP: every object also depends on the headers it includes, so a changed struct
+# layout can never be linked against stale objects compiled with the old one.
+$(BUILD)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(EXTRA_CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(EXTRA_CPPFLAGS) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD)/%.o: %.S
 	@mkdir -p $(dir $@)
-	$(CC) $(ASFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(EXTRA_CPPFLAGS) $(ASFLAGS) -MMD -MP -c $< -o $@
+
+-include $(OBJS:.o=.d)
 
 $(KERNEL): $(OBJS) linker.ld scripts/seal-kernel.py
 	$(LD) $(LDFLAGS) $(OBJS) -o $@
@@ -101,6 +106,7 @@ clean:
 check: $(KERNEL)
 	./tests/elf_sanity.sh $(KERNEL)
 	./tests/safety.sh
+	./tests/profile_matrix.sh
 	./tests/release_profile.sh
 	./tests/identify_parser.sh
 	./tests/gpt_redundancy.sh
@@ -118,11 +124,14 @@ check: $(KERNEL)
 	./tests/epoch_commit_ceremony.sh
 	./tests/recovery_journal.sh
 	./tests/recovery_commit_powerfail.sh
+	./tests/ahci_timeout.sh
+	./tests/e1000_driver.sh
+	./tests/acpi_tables.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh
 	./tests/quarantine.sh
-	./tests/network_hook.sh
+	./tests/network_parser.sh
 	./tests/muro_remaining_stages.sh
 	./tests/muro_adversarial.sh
 	./tests/safe_binary_isolation.sh $(KERNEL)
@@ -137,15 +146,15 @@ dma-test-kernel:
 	$(MAKE) BUILD=build-qemu-dma EXTRA_CPPFLAGS=-DPEREGRINUS_QEMU_DMA_TEST=1 all
 
 qemu-test-disk:
-	./scripts/create-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
-	./scripts/verify-gpt-test-image.py build/peregrinus-muro-1.0.1-testdisk.img
+	./scripts/create-gpt-test-image.py build/peregrinus-testdisk.img
+	./scripts/verify-gpt-test-image.py build/peregrinus-testdisk.img
 
 current-slot:
 	$(MAKE) BUILD=build-current SEAL_LABEL=$(RELEASE_TAG)-CURRENT EXTRA_CPPFLAGS="-DPEREGRINUS_SLOT_CURRENT=1" all
 
 lkg-slot:
 	@test -f lkg-reference/peregrinus-muro-1.0.1-gen22-safe.elf
-	@echo "LKG: retained Muro 0.2 generation $(LKG_GENERATION) LKG-slot artifact"
+	@echo "LKG: retained generation $(LKG_GENERATION) LKG-slot artifact"
 
 secure-slots: current-slot lkg-slot
 	rm -rf build-secure
@@ -172,7 +181,7 @@ current-recovery-live:
 
 lkg-recovery-live:
 	@test -f lkg-reference/peregrinus-muro-1.0.1-gen22-recovery-live.elf
-	@echo "LKG: retained Muro 0.2 generation $(LKG_GENERATION) recovery-live LKG-slot artifact"
+	@echo "LKG: retained generation $(LKG_GENERATION) recovery-live LKG-slot artifact"
 
 recovery-live-slots: current-recovery-live lkg-recovery-live
 	rm -rf build-recovery-live-secure
@@ -183,7 +192,13 @@ recovery-live-slots: current-recovery-live lkg-recovery-live
 	./scripts/verify-epoch-configs.py --staged build-recovery-live-secure/boot/limine/limine-staged.conf --committed build-recovery-live-secure/boot/limine/limine-committed.conf --root build-recovery-live-secure --committed-lkg
 
 
+double-fault-test-kernel:
+	$(MAKE) BUILD=build-double-fault-test SEAL_LABEL=$(RELEASE_TAG)-DIAG-STACK EXTRA_CPPFLAGS="-DPEREGRINUS_DIAG_STACK_OVERFLOW=1" all
+
+qemu-qualify:
+	./scripts/qemu-qualify.sh
+
 qemu-e1000-sandbox:
 	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
 
-.PHONY: all clean check iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
+.PHONY: all clean check double-fault-test-kernel qemu-qualify iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
