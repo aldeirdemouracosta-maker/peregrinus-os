@@ -13,7 +13,7 @@ public:
     void set_layout(Layout l) { layout_ = l; dead_ = 0; }
     Layout layout() const { return layout_; }
     // Returns how many characters were written to out (0, 1 or 2).
-    uint8_t feed(uint8_t scancode, char out[2]);
+    uint8_t feed(uint8_t scancode, char (&out)[2]);
 private:
     Layout layout_ = Layout::abnt2;
     bool shift_left_ = false, shift_right_ = false, caps_ = false, extended_ = false, altgr_ = false;

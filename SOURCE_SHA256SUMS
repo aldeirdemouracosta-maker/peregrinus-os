@@ -56,8 +56,8 @@ c87034cf5df873d54a2a296036fd4f62dd3ffe7259e7f2f38fa0fa77a9c21462  ./kernel/conso
 962dc056e191afb3d19f4930231b324b863d81510ce8b14993ce6ba83f09fa19  ./kernel/console/text_console.hpp
 cc3bf1d31e65edaa77ccc56dfcb1282df25ac1ff7b71d706d268c27c9a3b2faa  ./kernel/hw/manifest.cpp
 4961a22dd583c68e3ecb16dedf00f7c1c49da5112034547de4d4c755a57d5723  ./kernel/hw/manifest.hpp
-63eb5234997047d93496c9d4995c95a19ac90fbc230afd331802ea0dc48f19ed  ./kernel/input/keyboard.cpp
-49f4ab71bb6cdd682ac95f6969a90c08eff64ca97dc188c7d72cd2f314ce8df1  ./kernel/input/keyboard.hpp
+33f757c308a78a5893e1d849ed70bc39af2d7fb3b6d57ea5d9a046841ee813c4  ./kernel/input/keyboard.cpp
+1274542d161a82d89c169fcfae7ee5d64bcf8956fe37b6f275b2510ed9b139b1  ./kernel/input/keyboard.hpp
 bf743274ec33c197a397b060e272ac68b93f6ecf66de39638a9268d409bca0cd  ./kernel/input/ps2.cpp
 cd7874ec85d27a4de5a9e48e8fd4030613d2d0fda17ef979a67b9474c9ea1b20  ./kernel/input/ps2.hpp
 f8acef77a628aef73f9e263a70980808471a3db2f3a1222c81826ff9b8467b3d  ./kernel/llm/engine.cpp
@@ -117,7 +117,7 @@ e459abd948bda368c2bdf8b9a62a43f16d914c9965378bf7032633c6246f3148  ./kernel/secur
 d75b24edf0fefa87a055091efc84f9ff066d69a44f1a8fb37cdb2ad431e63a4c  ./kernel/security/sha256.hpp
 08b40a984a17bb3344a60edd406cf327bafc522183fe672769e3fc5be406c774  ./kernel/security/watchdog.cpp
 314946b97d1c3556dec7e97c7dda419ce4ad468d095fbbbfc6b0de60068293ec  ./kernel/security/watchdog.hpp
-85bea7a021b6b4edee2cdc5166ab9b40e0003849bb56638ca15cf51c700cda72  ./kernel/shell/holyc.cpp
+7406089f65fb4dc173a09dc3f7d365d66b561b07c96814380faa1bd2d12bfe29  ./kernel/shell/holyc.cpp
 f0e05e05b79647efcc6af687d480133fd8c3005f7502422c8a79ff357c2f12a7  ./kernel/shell/holyc.hpp
 6b0314b2d14e1d5e5d3c3e0883afaf66f5a1925984ac493d666be41f102f0a39  ./kernel/shell/shell.cpp
 85bfcdc58f960cef67ae6e90c059dcdec9d7a85bb03cc0737b3f812c40edca45  ./kernel/shell/shell.hpp

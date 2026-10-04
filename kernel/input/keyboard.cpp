@@ -66,7 +66,7 @@ char Decoder::base_char(uint8_t code, bool shift) const {
     return shift ? us_shift[code] : us_normal[code];
 }
 
-uint8_t Decoder::feed(uint8_t sc, char out[2]) {
+uint8_t Decoder::feed(uint8_t sc, char (&out)[2]) {
     if (sc == 0xE0) { extended_ = true; return 0; }
     const bool release = (sc & 0x80) != 0;
     const uint8_t code = sc & 0x7F;

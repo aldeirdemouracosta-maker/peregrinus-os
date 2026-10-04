@@ -287,18 +287,19 @@ private:
         if (!ex) return Flow::normal;
         if (!step()) return Flow::error;
         size_t used = 0;
-        for (size_t i = start; i < end; ++i) {
-            char c = src_[i];
-            if (c == '\\' && i + 1 < end) {
-                const char e = src_[++i];
+        size_t i = start;
+        while (i < end) {
+            char c = src_[i++];
+            if (c == '\\' && i < end) {
+                const char e = src_[i++];
                 c = e == 'n' ? '\n' : e == 't' ? '\t' : e == '\\' ? '\\' : e == '"' ? '"' : e == '\'' ? '\'' : e == '0' ? 0 : 0;
                 if (c == 0 && e != '0') return error("escape inválido em string");
                 if (c == 0) continue;
                 if (!emit_byte(c)) return Flow::error;
                 continue;
             }
-            if (c == '%' && i + 1 < end) {
-                const char f = src_[++i];
+            if (c == '%' && i < end) {
+                const char f = src_[i++];
                 if (f == '%') { if (!emit_byte('%')) return Flow::error; continue; }
                 if (used >= nargs) return error("faltam argumentos para o formato");
                 const int64_t a = args[used++];
