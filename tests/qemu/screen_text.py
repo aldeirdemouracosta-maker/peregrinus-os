@@ -13,9 +13,10 @@ def load_font():
     src = (ROOT / 'kernel/console/font8x8.hpp').read_text()
     rows = re.findall(r'\{((?:\s*0x[0-9A-Fa-f]{2},?){8})\}', src)
     font = {}
-    for code, r in enumerate(rows):
+    for idx, r in enumerate(rows):
         bits = tuple(int(v, 16) for v in r.replace(' ', '').split(',') if v)
-        if 0x20 <= code < 0x7F:
+        code = idx if idx < 128 else 0xA0 + (idx - 128)  # basic table, then Latin-1 supplement
+        if 0x20 <= code < 0x7F or 0xA1 <= code <= 0xFF:
             font.setdefault(bits, chr(code))
     return font
 

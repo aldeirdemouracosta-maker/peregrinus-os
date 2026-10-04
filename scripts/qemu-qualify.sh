@@ -119,6 +119,20 @@ PY
     echo "  ok: boot log decoded from the screen pixels ($OUT/screen.txt)"
   else tail -3 "$OUT/screen.txt"; FAILS=$((FAILS+1)); fi
 }
+case_shell(){
+  echo "== shell: commands over serial and over the emulated PS/2 keyboard; prompt and accents on screen"
+  local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
+  local ser="$OUT/shell.ser" mon="$OUT/shell.mon"; rm -f "$ser" "$mon" "$OUT/shell.ppm"
+  "${QEMU[@]}" -chardev socket,id=s0,path="$ser",server=on,wait=off -serial chardev:s0 \
+    -monitor unix:"$mon",server,nowait -cdrom "$iso" & local pid=$!
+  if python3 tests/qemu/shell_drive.py "$ser" "$mon" "$PWD/$OUT/shell.ppm" > "$OUT/shell.txt" 2>&1; then
+    sed 's/^/  /' "$OUT/shell.txt"
+  else tail -5 "$OUT/shell.txt"; FAILS=$((FAILS+1)); fi
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  if python3 tests/qemu/screen_text.py "$OUT/shell.ppm" 'peregrinus> sobre' 'Geração' 'RAM utilizável' > "$OUT/shell-screen.txt"; then
+    echo "  ok: prompt, typed commands and accented output decoded from the screen"
+  else tail -3 "$OUT/shell-screen.txt"; FAILS=$((FAILS+1)); fi
+}
 case_double_fault(){
   echo "== kernel stack overflow hits the guard page and is reported (no silent triple fault)"
   local iso; iso=$(./scripts/make-iso.sh double-fault-test | tail -1)
@@ -127,7 +141,7 @@ case_double_fault(){
 }
 
 CASES=("$@")
-[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen e1000 recovery_commit_test recovery_live double_fault)
+[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell e1000 recovery_commit_test recovery_live double_fault)
 for c in "${CASES[@]}"; do "case_$c"; done
 if (( FAILS )); then echo "QEMU qualification: $FAILS failure(s); serial logs in $OUT/"; exit 1; fi
 echo "QEMU qualification: PASS (${CASES[*]})"

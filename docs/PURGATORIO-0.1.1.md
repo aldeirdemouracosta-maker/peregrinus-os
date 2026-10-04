@@ -50,6 +50,18 @@ para limitar as escritas no framebuffer. Mostra `?` para caracteres fora do ASCI
 utilizável, o console fica desligado e a serial continua (fail-closed). Testes:
 `tests/text_console.sh` e o cenário QEMU `screen`, que lê o texto direto dos pixels da tela.
 
+## Teclado e shell
+
+Depois do boot o sistema abre o prompt `peregrinus>` em vez de parar. A entrada vem do teclado
+PS/2 (i8042 por polling, scancode set 1, layout US) e também da COM1, o que permite operar o
+sistema por um cabo serial ou por outro programa. Comandos: `ajuda`, `sobre`, `status`, `hw`,
+`limpar`, `reiniciar`, `parar` (com aliases em inglês); nenhum grava nada. A linha é limitada a
+96 caracteres e aceita só ASCII. Sem controlador PS/2, o shell segue pela serial. O console de
+texto passou a desenhar acentos e cedilha (U+00A0–U+00FF da mesma fonte de domínio público).
+Ainda sem interrupções, então o laço de entrada ocupa a CPU (aceitável em VM; melhorar depois).
+Testes: `tests/shell.sh` (decodificador, editor, comandos) e o cenário QEMU `shell`, que digita
+pelo teclado emulado (`sendkey`) e pela serial e lê o resultado também nos pixels da tela.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

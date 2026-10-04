@@ -8,7 +8,8 @@ virtual, numa janela da sua área de trabalho.
 
 - O log do boot aparece **na tela** (console de texto no framebuffer) e também na **porta serial (COM1)**.
   A serial continua útil para salvar o log num arquivo.
-- O sistema faz o diagnóstico, aplica a política e para (`Boot complete: ...`). Ainda não há teclado nem shell.
+- Depois do diagnóstico aparece o prompt `peregrinus>`. Digite `ajuda` para ver os comandos (teclado PS/2 ou pela serial).
+  O teclado segue o layout americano (US).
 - Use o perfil **SAFE** (`peregrinus-...-safe.iso`). O perfil **e1000** só aceita QEMU/KVM e se recusa
   a rodar em outros hipervisores, de propósito.
 - Memória: 256 MB sobram. Desative o Secure Boot (o Limine não é assinado).

@@ -24,6 +24,12 @@ static bool tx_ready() {
     return (peregrinus::io::in8(COM1 + 5) & 0x20) != 0;
 }
 
+bool poll_input(char& c) {
+    if ((peregrinus::io::in8(COM1 + 5) & 0x01) == 0) return false;
+    c = static_cast<char>(peregrinus::io::in8(COM1));
+    return true;
+}
+
 void putc(char c) {
     // Bounded wait: a missing or wedged UART must not hang the kernel. On timeout the
     // character is dropped (the console is diagnostic only).

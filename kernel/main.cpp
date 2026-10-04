@@ -39,6 +39,9 @@
 #include "storage/recovery_journal_probe.hpp"
 #include "config/features.hpp"
 #include "arch/x86_64/kstack.hpp"
+#include "input/keyboard.hpp"
+#include "input/ps2.hpp"
+#include "shell/shell.hpp"
 
 // A profile that commits boot success must also be able to read the GPT and the journal;
 // otherwise the commit can never be confirmed and every boot ends in a panic.
@@ -52,6 +55,7 @@ static void halt_forever(){for(;;)asm volatile("hlt");}
 static void require_watchdog(peregrinus::security::watchdog::Stage s){if(!peregrinus::security::watchdog::checkpoint(s))peregrinus::panic::stop("Peregrinus boot watchdog sequence violation");}
 
 static void kmain_stage2();
+static void run_shell(const peregrinus::shell::SystemInfo& info);
 extern "C" const char* peregrinus_stack_guard_source;
 
 extern "C" void kmain(){
@@ -141,7 +145,37 @@ static void kmain_stage2(){
     if constexpr(features::nic_driver_live){
         serial::writeln("e1000 qualification profile: starting gated polling datapath.");
         if(!net::sandbox::service().init())panic::stop("e1000 qualification init failed");
-        for(;;){const size_t n=net::sandbox::service().poll(8);if(n==0)asm volatile("pause");}
+    } else {
+        serial::writeln("Boot complete: firewall/network stack present, live NIC ownership remains BLOCKED in this build.");
     }
-    serial::writeln("Boot complete: firewall/network stack present, live NIC ownership remains BLOCKED in this build.");halt_forever();
+    const auto& m=hw::manifest();
+    const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
+        security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),ps2::init(),
+        m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present};
+    run_shell(info);
+}
+
+// Input loop (interrupts stay off, so everything is polled): keyboard and serial feed one line
+// editor; the e1000 qualification datapath, when present, is serviced in the same loop.
+static void shell_out(const char* s){peregrinus::serial::write(s);}
+static void run_shell(const peregrinus::shell::SystemInfo& info){
+    using namespace peregrinus;
+    serial::writeln(info.keyboard?"Shell: keyboard (PS/2) and serial input. Type 'ajuda'.":"Shell: serial input only (no PS/2 controller). Type 'ajuda'.");
+    keyboard::Decoder dec;shell::LineEditor ed;
+    serial::write(shell::prompt());
+    for(;;){
+        bool idle=true;
+        if constexpr(features::nic_driver_live){if(net::sandbox::service().poll(8))idle=false;}
+        char c=0;uint8_t sc=0;
+        if(serial::poll_input(c))idle=false;
+        else if(ps2::poll(sc)){idle=false;c=dec.feed(sc);}
+        if(!c){if(idle)asm volatile("pause");continue;}
+        if(!ed.feed(c,shell_out))continue;
+        const auto action=shell::execute(ed.line(),info,shell_out);
+        ed.clear();
+        if(action==shell::Action::clear_screen)text_console::clear();
+        if(action==shell::Action::reboot){ps2::request_reset();serial::writeln("Reset was ignored by the hardware; halting.");halt_forever();}
+        if(action==shell::Action::halt)halt_forever();
+        serial::write(shell::prompt());
+    }
 }

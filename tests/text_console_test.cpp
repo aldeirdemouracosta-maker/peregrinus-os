@@ -47,8 +47,16 @@ int main() {
 
     // UTF-8: one '?' per non-ASCII character, continuation bytes skipped.
     text_console::init();
-    puts_console("Peregrinus OS \xE2\x80\x94 Purgat\xC3\xB3rio\r\n");
-    if (!row_is(0, "Peregrinus OS ? Purgat?rio")) { std::puts("FAIL: UTF-8 rendering"); return 6; }
+    puts_console("Peregrinus OS \xE2\x80\x94 Purgat\xC3\xB3rio \xC3\xA7\xC3\xA3o\r\n");
+    if (!row_is(0, "Peregrinus OS ? Purgat\xF3rio \xE7\xE3o")) { std::puts("FAIL: UTF-8 rendering (Latin-1 accents)"); return 6; }
+    // Truncated / invalid sequences show '?' and never desynchronise the following ASCII.
+    text_console::init();
+    puts_console("a\xC3" "b\xC2\x85" "c\xF0\x9F\x98\x80" "d");
+    if (!row_is(0, "a?b?c?d")) { std::puts("FAIL: malformed UTF-8 handling"); return 12; }
+    // Backspace erases the previous cell.
+    text_console::init();
+    puts_console("abc\b\bX");
+    if (!row_is(0, "aX ")) { std::puts("FAIL: backspace"); return 13; }
 
     // Half-screen scroll keeps the newest lines visible and in order.
     text_console::init();

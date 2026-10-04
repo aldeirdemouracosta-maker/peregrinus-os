@@ -12,5 +12,6 @@ bool ready();
 void putc(char c);
 uint32_t cols();
 uint32_t rows();
-char cell(uint32_t row, uint32_t col);  // inspection (tests)
+char cell(uint32_t row, uint32_t col);  // Latin-1 code point at a cell (tests)
+void clear();
 }

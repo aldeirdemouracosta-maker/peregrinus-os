@@ -31,4 +31,5 @@
 | ARP / ICMP / UDP-deny / burst on the wire | — | QEMU-verified |
 | Recovery-live journal commit | — | — (recovery-live profile: QEMU-verified on a disposable disk) |
 | Boot log on screen (framebuffer text console) | QEMU-verified (text decoded from a screendump) | yes |
+| Shell (ajuda, sobre, status, hw, limpar, reiniciar, parar) via PS/2 keyboard and COM1 | QEMU-verified (sendkey + serial) | yes (serviced with the datapath) |
 | Physical hardware | NOT RUN | NOT RUN |

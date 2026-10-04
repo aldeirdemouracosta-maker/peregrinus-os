@@ -46,7 +46,7 @@ Muro 1.0 consults the Intel 8254x Software Developer Manual for descriptor-ring/
 
 ## font8x8 (framebuffer text console)
 
-`kernel/console/font8x8.hpp` contains the glyph table of `font8x8_basic.h` from
+`kernel/console/font8x8.hpp` contains the glyph tables of `font8x8_basic.h` and `font8x8_ext_latin.h` from
 https://github.com/dhepper/font8x8 by Daniel Hepper, **Public Domain**, derived from the
 public-domain IBM VGA fonts (via Marcel Sondaar). Glyph data unchanged; only converted to a
 `const uint8_t` C++ table.

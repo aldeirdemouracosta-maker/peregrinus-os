@@ -35,6 +35,8 @@ CPP_SRCS := \
 	kernel/console/serial.cpp \
 	kernel/console/text_console.cpp \
 	kernel/hw/manifest.cpp \
+	kernel/input/keyboard.cpp \
+	kernel/input/ps2.cpp \
 	kernel/main.cpp \
 	kernel/mm/memory.cpp \
 	kernel/mm/mmio.cpp \
@@ -53,6 +55,7 @@ CPP_SRCS := \
 	kernel/security/watchdog.cpp \
 	kernel/runtime/memory.cpp \
 	kernel/runtime/stack_protector.cpp \
+	kernel/shell/shell.cpp \
 	kernel/storage/ahci.cpp \
 	kernel/storage/boot_policy.cpp \
 	kernel/storage/disk_probe.cpp \
@@ -129,6 +132,7 @@ check: $(KERNEL)
 	./tests/e1000_driver.sh
 	./tests/acpi_tables.sh
 	./tests/text_console.sh
+	./tests/shell.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh
