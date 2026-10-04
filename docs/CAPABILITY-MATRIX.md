@@ -30,4 +30,5 @@
 | Boot to completion | QEMU-verified (BIOS + UEFI, via controller) | QEMU-verified |
 | ARP / ICMP / UDP-deny / burst on the wire | — | QEMU-verified |
 | Recovery-live journal commit | — | — (recovery-live profile: QEMU-verified on a disposable disk) |
+| Boot log on screen (framebuffer text console) | QEMU-verified (text decoded from a screendump) | yes |
 | Physical hardware | NOT RUN | NOT RUN |

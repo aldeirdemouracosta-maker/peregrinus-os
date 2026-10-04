@@ -6,8 +6,8 @@ virtual, numa janela da sua área de trabalho.
 
 ## O que esperar
 
-- Toda a saída de texto vai para a **porta serial (COM1)**. Na tela da VM aparecem só barras coloridas.
-  Configure a serial da VM (abaixo) para ler o log.
+- O log do boot aparece **na tela** (console de texto no framebuffer) e também na **porta serial (COM1)**.
+  A serial continua útil para salvar o log num arquivo.
 - O sistema faz o diagnóstico, aplica a política e para (`Boot complete: ...`). Ainda não há teclado nem shell.
 - Use o perfil **SAFE** (`peregrinus-...-safe.iso`). O perfil **e1000** só aceita QEMU/KVM e se recusa
   a rodar em outros hipervisores, de propósito.

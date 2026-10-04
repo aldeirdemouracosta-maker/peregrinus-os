@@ -4,6 +4,9 @@
 
 namespace peregrinus::serial {
 static constexpr unsigned short COM1 = 0x3F8;
+static void (*g_mirror)(char) = nullptr;
+
+void set_mirror(void (*mirror)(char)) { g_mirror = mirror; }
 
 bool init() {
     using namespace peregrinus::io;
@@ -24,6 +27,7 @@ static bool tx_ready() {
 void putc(char c) {
     // Bounded wait: a missing or wedged UART must not hang the kernel. On timeout the
     // character is dropped (the console is diagnostic only).
+    if (g_mirror) g_mirror(c);
     if (!spin::until([] { return tx_ready(); }, 100000)) return;
     peregrinus::io::out8(COM1, static_cast<unsigned char>(c));
 }

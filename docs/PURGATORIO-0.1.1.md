@@ -41,6 +41,15 @@ afirmação abaixo é verificada por `make check` ou por `scripts/qemu-qualify.s
 - `tests/profile_matrix.sh`: as flags de cada perfil são verificadas com `static_assert`, e combinações proibidas não compilam.
 - CI: `qemu`, `fuzz`, `reproducible` (com attestation de proveniência no `main`), CodeQL e Dependabot.
 
+## Console de texto na tela
+
+O log do boot, inclusive pânico e exceções, aparece no framebuffer e não só na serial. Usa uma
+grade estática (no máximo 160×90 células, sem heap) e a fonte 8×8 de domínio público
+(`THIRD_PARTY_NOTICES.md`), com glifos 2× a partir de 1024×600, e maiores (até 4×) em telas grandes, em vez de mais células. Rola meia tela por vez,
+para limitar as escritas no framebuffer. Mostra `?` para caracteres fora do ASCII. Sem framebuffer
+utilizável, o console fica desligado e a serial continua (fail-closed). Testes:
+`tests/text_console.sh` e o cenário QEMU `screen`, que lê o texto direto dos pixels da tela.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

@@ -2,6 +2,7 @@
 #include <peregrinus/release_profile.h>
 #include "console/serial.hpp"
 #include "console/framebuffer.hpp"
+#include "console/text_console.hpp"
 #include "console/format.hpp"
 #include "arch/x86_64/cpu.hpp"
 #include "arch/x86_64/gdt.hpp"
@@ -56,8 +57,12 @@ extern "C" const char* peregrinus_stack_guard_source;
 extern "C" void kmain(){
     using namespace peregrinus;
     security::watchdog::reset();require_watchdog(security::watchdog::Stage::boot_entry);
-    serial::init();serial::writeln("");serial::writeln("====================================");serial::writeln(" Peregrinus OS — " PEREGRINUS_RELEASE_NAME);serial::writeln("====================================");
+    serial::init();
+    // Screen console first, so the whole boot log (and any panic) is readable without a serial cable.
+    if(boot::framebuffer_request.response&&boot::framebuffer_request.response->framebuffer_count&&framebuffer::init(boot::framebuffer_request.response->framebuffers[0])&&text_console::init())serial::set_mirror(text_console::putc);
+    serial::writeln("");serial::writeln("====================================");serial::writeln(" Peregrinus OS — " PEREGRINUS_RELEASE_NAME);serial::writeln("====================================");
     if(!LIMINE_BASE_REVISION_SUPPORTED(boot::base_revision))panic::stop("Limine base revision unsupported");
+    serial::writeln(text_console::ready()?"Console: framebuffer text (mirror of serial)":"Console: serial only (no usable framebuffer)");
     if(boot::bootloader_info_request.response){serial::write("Bootloader: ");serial::write(boot::bootloader_info_request.response->name);serial::write(" ");serial::writeln(boot::bootloader_info_request.response->version);}
     cpu::report();gdt::init();idt::init();require_watchdog(security::watchdog::Stage::cpu_ready);
 
@@ -95,7 +100,6 @@ static void kmain_stage2(){
     if(!integrity.trusted())panic::stop("Peregrinus Guard kernel integrity failure");
     require_watchdog(security::watchdog::Stage::integrity_ready);
 
-    if(boot::framebuffer_request.response&&boot::framebuffer_request.response->framebuffer_count){auto* fb=boot::framebuffer_request.response->framebuffers[0];if(framebuffer::init(fb)){framebuffer::status_bars();serial::writeln("Framebuffer: initialized");}else serial::writeln("Framebuffer: unsupported mode");}
     acpi::init(boot::rsdp_request.response,boot::hhdm_request.response);
     pci::enumerate_readonly();
     net::nic::probe_readonly();

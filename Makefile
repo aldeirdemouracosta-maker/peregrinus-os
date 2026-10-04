@@ -33,6 +33,7 @@ CPP_SRCS := \
 	kernel/console/format.cpp \
 	kernel/console/framebuffer.cpp \
 	kernel/console/serial.cpp \
+	kernel/console/text_console.cpp \
 	kernel/hw/manifest.cpp \
 	kernel/main.cpp \
 	kernel/mm/memory.cpp \
@@ -127,6 +128,7 @@ check: $(KERNEL)
 	./tests/ahci_timeout.sh
 	./tests/e1000_driver.sh
 	./tests/acpi_tables.sh
+	./tests/text_console.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh

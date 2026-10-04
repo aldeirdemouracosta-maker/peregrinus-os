@@ -4,4 +4,7 @@ bool init();
 void putc(char c);
 void write(const char* s);
 void writeln(const char* s);
+// Optional second sink (the framebuffer text console). Every byte written to the serial port
+// is also passed to it, so the screen shows exactly the serial log.
+void set_mirror(void (*mirror)(char));
 }

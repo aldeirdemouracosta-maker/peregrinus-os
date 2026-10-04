@@ -43,3 +43,10 @@ The post-boot success transaction uses Peregrinus-owned AHCI code and standard A
 ## Network protocol / NIC references — Muro 1.0
 
 Muro 1.0 consults the Intel 8254x Software Developer Manual for descriptor-ring/register semantics and current Linux/QEMU material for interoperability checks around the Intel 82540EM (`8086:100e`). ARP/IPv4/ICMP wire formats are implemented independently from protocol specifications. No Intel sample code, QEMU code, Linux driver code, lwIP, Netfilter, nftables or other network stack is copied or linked into Peregrinus.
+
+## font8x8 (framebuffer text console)
+
+`kernel/console/font8x8.hpp` contains the glyph table of `font8x8_basic.h` from
+https://github.com/dhepper/font8x8 by Daniel Hepper, **Public Domain**, derived from the
+public-domain IBM VGA fonts (via Marcel Sondaar). Glyph data unchanged; only converted to a
+`const uint8_t` C++ table.

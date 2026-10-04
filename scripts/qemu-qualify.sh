@@ -44,6 +44,7 @@ case_safe_bios(){
   boot safe-bios.log 'live NIC ownership remains BLOCKED|PANIC|EXCEPTION|halt\.' 60 -cdrom "$iso"
   expect safe-bios.log 'Kernel \.text SHA-256'
   expect safe-bios.log 'Stack protector: ACTIVE'
+  expect safe-bios.log 'Console: framebuffer text'
   expect safe-bios.log 'ACPI MADT LAPIC'
   expect safe-bios.log 'PEREGRINUS GUARD: passive boot'
   expect safe-bios.log 'live NIC ownership remains BLOCKED'
@@ -101,6 +102,23 @@ case_uefi_controller(){
   expect uefi-controller.log 'PEREGRINUS GUARD: passive boot'
   forbid uefi-controller.log "$FATAL"
 }
+case_screen(){
+  echo "== boot log is readable on the screen (framebuffer text console), not only on serial"
+  local iso; iso=$(./scripts/make-iso.sh safe | tail -1)
+  local mon="$OUT/screen.mon" log="$OUT/screen.log"; rm -f "$mon" "$log" "$OUT/screen.ppm"
+  "${QEMU[@]}" -serial "file:$log" -cdrom "$iso" -monitor unix:"$mon",server,nowait & local pid=$!
+  local t=0; while (( t < 300 )) && ! grep -aq 'Boot complete' "$log" 2>/dev/null; do sleep 0.2; t=$((t+1)); done
+  sleep 1
+  python3 - "$mon" "$PWD/$OUT/screen.ppm" <<'PY'
+import socket, sys, time
+s = socket.socket(socket.AF_UNIX); s.connect(sys.argv[1]); time.sleep(0.3); s.recv(4096)
+s.sendall(('screendump %s\n' % sys.argv[2]).encode()); time.sleep(1.5); s.close()
+PY
+  kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
+  if python3 tests/qemu/screen_text.py "$OUT/screen.ppm" 'Hardware Manifest' 'PEREGRINUS GUARD: passive boot' 'Boot complete' > "$OUT/screen.txt"; then
+    echo "  ok: boot log decoded from the screen pixels ($OUT/screen.txt)"
+  else tail -3 "$OUT/screen.txt"; FAILS=$((FAILS+1)); fi
+}
 case_double_fault(){
   echo "== kernel stack overflow hits the guard page and is reported (no silent triple fault)"
   local iso; iso=$(./scripts/make-iso.sh double-fault-test | tail -1)
@@ -109,7 +127,7 @@ case_double_fault(){
 }
 
 CASES=("$@")
-[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller e1000 recovery_commit_test recovery_live double_fault)
+[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen e1000 recovery_commit_test recovery_live double_fault)
 for c in "${CASES[@]}"; do "case_$c"; done
 if (( FAILS )); then echo "QEMU qualification: $FAILS failure(s); serial logs in $OUT/"; exit 1; fi
 echo "QEMU qualification: PASS (${CASES[*]})"

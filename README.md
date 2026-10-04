@@ -63,5 +63,7 @@ make check                 # host regression (must exit 0)
 FUZZ_SECONDS=60 ./tests/fuzz.sh   # libFuzzer + ASan/UBSan over all untrusted-input parsers
 ```
 
+The boot log is shown on screen (framebuffer text console) as well as on COM1.
+
 Running it in a virtual machine next to your desktop OS (QEMU tested; VirtualBox and Hyper-V
 NOT RUN): see `docs/VIRTUAL-MACHINE.md`.
