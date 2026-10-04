@@ -4,3 +4,5 @@
 *.o
 __pycache__/
 /third_party/limine-dist/
+# Gerado pela CI (ci.yml) antes da checagem de SOURCE_SHA256SUMS
+/toolchain.txt
