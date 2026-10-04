@@ -16,22 +16,26 @@ struct SystemInfo {
     bool interrupts;               // PIC/PIT live (false: polling fallback)
     uint32_t timer_hz;
     uint64_t (*ticks)();           // live tick counter (may be null)
+    const char* (*layout)();       // current keyboard layout name (may be null)
 };
 using Output = void (*)(const char*);
-enum class Action : uint8_t { none, clear_screen, reboot, halt };
+enum class Action : uint8_t { none, clear_screen, reboot, halt, layout_us, layout_abnt2 };
 
-// Bounded line editor: printable characters are echoed and stored up to `capacity`; extra
-// characters are dropped (and not echoed). Returns true when Enter completes a line.
+// Bounded line editor. The line is stored as Latin-1 (ASCII + U+00A0..U+00FF, so Portuguese
+// text fits in one byte per character) and echoed as UTF-8. Characters beyond `capacity` are
+// dropped (and not echoed). feed()/feed_utf8() return true when Enter completes a line.
 class LineEditor {
 public:
     static constexpr size_t capacity = 96;
-    bool feed(char c, Output echo);
+    bool feed(char latin1, Output echo);        // keyboard path (Latin-1)
+    bool feed_utf8(char byte, Output echo);     // serial path (UTF-8 byte stream)
     const char* line() const { return buf_; }
     size_t length() const { return len_; }
     void clear() { len_ = 0; buf_[0] = 0; }
 private:
     char buf_[capacity + 1]{};
     size_t len_ = 0;
+    uint8_t utf8_lead_ = 0, utf8_skip_ = 0;
 };
 
 const char* prompt();

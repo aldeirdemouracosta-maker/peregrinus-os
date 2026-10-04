@@ -57,6 +57,7 @@ static void require_watchdog(peregrinus::security::watchdog::Stage s){if(!peregr
 
 static void kmain_stage2();
 static void run_shell(const peregrinus::shell::SystemInfo& info);
+static const char* current_layout();
 extern "C" const char* peregrinus_stack_guard_source;
 
 extern "C" void kmain(){
@@ -156,30 +157,35 @@ static void kmain_stage2(){
     const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
         security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),kbd,
         m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present,
-        irq,interrupts::timer_hz,interrupts::ticks};
+        irq,interrupts::timer_hz,interrupts::ticks,current_layout};
     run_shell(info);
 }
 
 // Input loop (interrupts stay off, so everything is polled): keyboard and serial feed one line
 // editor; the e1000 qualification datapath, when present, is serviced in the same loop.
 static void shell_out(const char* s){peregrinus::serial::write(s);}
+static peregrinus::keyboard::Decoder g_keys;
+static const char* current_layout(){return peregrinus::keyboard::layout_name(g_keys.layout());}
 static void run_shell(const peregrinus::shell::SystemInfo& info){
     using namespace peregrinus;
     serial::writeln(info.keyboard?"Shell: keyboard (PS/2) and serial input. Type 'ajuda'.":"Shell: serial input only (no PS/2 controller). Type 'ajuda'.");
-    keyboard::Decoder dec;shell::LineEditor ed;
+    g_keys.reset();shell::LineEditor ed;
     serial::write(shell::prompt());
     for(;;){
         bool idle=true;
         if constexpr(features::nic_driver_live){if(net::sandbox::service().poll(8))idle=false;}
-        char c=0;uint8_t sc=0,b=0;
+        // Serial bytes are UTF-8; keyboard characters are Latin-1 (up to two per scancode).
+        char keys[2];uint8_t nkeys=0,sc=0,b=0;char sb=0;bool from_serial=false,line_done=false;
         if(interrupts::active()){
-            if(interrupts::next_serial_byte(b)){idle=false;c=static_cast<char>(b);}
-            else if(interrupts::next_scancode(sc)){idle=false;c=dec.feed(sc);}
+            if(interrupts::next_serial_byte(b)){idle=false;from_serial=true;sb=static_cast<char>(b);}
+            else if(interrupts::next_scancode(sc)){idle=false;nkeys=g_keys.feed(sc,keys);}
         }else{
-            if(serial::poll_input(c))idle=false;
-            else if(ps2::poll(sc)){idle=false;c=dec.feed(sc);}
+            if(serial::poll_input(sb)){idle=false;from_serial=true;}
+            else if(ps2::poll(sc)){idle=false;nkeys=g_keys.feed(sc,keys);}
         }
-        if(!c){
+        if(from_serial)line_done=ed.feed_utf8(sb,shell_out);
+        for(uint8_t i=0;i<nkeys&&!line_done;++i)line_done=ed.feed(keys[i],shell_out);
+        if(!from_serial&&nkeys==0){
             if(idle){
                 // The e1000 qualification datapath is polled, so that profile keeps spinning.
                 if constexpr(features::nic_driver_live)asm volatile("pause");
@@ -187,12 +193,14 @@ static void run_shell(const peregrinus::shell::SystemInfo& info){
             }
             continue;
         }
-        if(!ed.feed(c,shell_out))continue;
+        if(!line_done)continue;
         const auto action=shell::execute(ed.line(),info,shell_out);
         ed.clear();
         if(action==shell::Action::clear_screen)text_console::clear();
         if(action==shell::Action::reboot){ps2::request_reset();serial::writeln("Reset was ignored by the hardware; halting.");halt_forever();}
         if(action==shell::Action::halt)halt_forever();
+        if(action==shell::Action::layout_us)g_keys.set_layout(keyboard::Layout::us);
+        if(action==shell::Action::layout_abnt2)g_keys.set_layout(keyboard::Layout::abnt2);
         serial::write(shell::prompt());
     }
 }

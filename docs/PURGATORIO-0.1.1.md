@@ -78,6 +78,16 @@ no boot (registrador de rascunho). Sem UART, a saída vai só para a tela; um UA
 desligado no primeiro timeout, sem atraso por caractere. Cenários QEMU novos: `idle` (CPU ociosa
 e timer) e `no_serial` (máquina sem COM1).
 
+## Teclado ABNT2
+
+O layout padrão passa a ser ABNT2. Ele tem Ç, as teclas `´ ~ ^ ¨` como teclas mortas (á à â ã é ê
+í ó ô õ ú ü e maiúsculas; acento + espaço = o próprio acento; acento + letra sem forma acentuada =
+os dois caracteres), as teclas extras `\ |` e `/ ?` e AltGr+Q/W para `/` e `?`. `teclado us` e
+`teclado abnt2` trocam o layout. A linha guarda Latin-1 (um byte por letra acentuada) e ecoa em
+UTF-8. Pela serial, o UTF-8 é decodificado e caracteres fora de U+0000–U+00FF são descartados.
+Testes: `tests/shell.sh` (mapas, teclas mortas, AltGr, UTF-8) e o cenário QEMU `shell`, que aperta
+as teclas físicas do ABNT2 e confere "çáõ" no log e na tela.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

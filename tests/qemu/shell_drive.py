@@ -63,6 +63,15 @@ for key in ['x', 'y', 'z', 'backspace', 'backspace', 'backspace', 'h', 'w', 'ret
 if not read_until('RAM utiliz', 10): fail('keyboard backspace/hw failed')
 print('ok: backspace editing -> hw')
 
+# ABNT2 (default layout): the key right of L is ç; [ is the dead acute; ' is the dead tilde.
+for key in ['t', 'e', 'c', 'l', 'a', 'd', 'o', 'ret']:
+    monitor('sendkey ' + key)
+if not read_until('Teclado atual: ABNT2', 10): fail('layout query failed')
+for key in ['semicolon', 'bracket_left', 'a', 'apostrophe', 'o', 'ret']:
+    monitor('sendkey ' + key)
+if not read_until('Comando desconhecido: çáõ', 10): fail('ABNT2 ç / dead keys failed')
+print('ok: ABNT2 keyboard: ç and dead keys (á, õ)')
+
 time.sleep(0.5)
 monitor('screendump ' + dump)
 time.sleep(1.0)

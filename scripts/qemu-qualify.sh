@@ -131,7 +131,7 @@ case_shell(){
     sed 's/^/  /' "$OUT/shell.txt"
   else tail -5 "$OUT/shell.txt"; FAILS=$((FAILS+1)); fi
   kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
-  if python3 tests/qemu/screen_text.py "$OUT/shell.ppm" 'peregrinus> sobre' 'Geração' 'RAM utilizável' > "$OUT/shell-screen.txt"; then
+  if python3 tests/qemu/screen_text.py "$OUT/shell.ppm" 'peregrinus> sobre' 'Geração' 'RAM utilizável' 'Comando desconhecido: çáõ' > "$OUT/shell-screen.txt"; then
     echo "  ok: prompt, typed commands and accented output decoded from the screen"
   else tail -3 "$OUT/shell-screen.txt"; FAILS=$((FAILS+1)); fi
 }
