@@ -43,6 +43,14 @@ bool map_page(uint64_t virt,uint64_t phys,uint64_t leaf_flags){
     pt[i1]=(phys&ADDR_MASK)|leaf_flags|P;
     invlpg(virt); ++g.pages_mapped; return true;
 }
+bool unmap_page(uint64_t virt){
+    if(!g.initialized||(virt&0xFFF))return false;
+    uint64_t* t=table_virt(g.cr3_phys);
+    const unsigned idx[3]={unsigned((virt>>39)&0x1FF),unsigned((virt>>30)&0x1FF),unsigned((virt>>21)&0x1FF)};
+    for(unsigned l=0;l<3;++l){if(!t)return false;const uint64_t e=t[idx[l]];if(!(e&P)||(e&PS))return false;t=table_virt(e&ADDR_MASK);}
+    if(!t)return false;const unsigned i1=(virt>>12)&0x1FF;if(!(t[i1]&P))return false;
+    t[i1]=0;invlpg(virt);--g.pages_mapped;return true;
+}
 bool pml4_slot_unused(unsigned index){
     if(!g.initialized||index>=512)return false;
     auto* pml4=table_virt(g.cr3_phys);return pml4 && (pml4[index]&P)==0;

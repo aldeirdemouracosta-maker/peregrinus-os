@@ -46,3 +46,11 @@ A base segue coerente e toda a regressão host-side passa com clang/ld.lld, `-We
 ## Veredito técnico
 
 Não há razão para reiniciar a arquitetura. O projeto está mais saudável quando mantém três perfis separados: SAFE, RECOVERY-LIVE/qualification e e1000-QEMU/qualification. A prioridade seguinte deve ser runtime qualification, não adicionar mais subsistemas grandes.
+
+## Atualização 0.1.1 (2026-10-04)
+
+A pendência 1 (QEMU + OVMF + e1000) e a pendência 5 (CI/reprodutibilidade) foram resolvidas. Ao
+executar os perfis em runtime, a revisão encontrou os erros listados em `docs/PURGATORIO-0.1.1.md`,
+que este documento não previa: o perfil e1000 parava antes de ligar a NIC e o recovery-live sempre
+entrava em pânico. A pendência 2 foi coberta em QEMU com disco descartável. Continuam abertas:
+swtpm, hardware real (3) e loader do Purgatório (4).

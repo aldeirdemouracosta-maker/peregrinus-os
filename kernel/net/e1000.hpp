@@ -25,6 +25,8 @@ enum class InitStatus : uint8_t {
     mmio_failed,
     dma_failed,
     mac_invalid,
+    reset_failed,
+    bus_master_failed,
     ready,
 };
 
@@ -54,6 +56,8 @@ private:
     MacAddress mac_{};
     Stats stats_{};
     bool ready_ = false;
+    const pci::Device* dev_ = nullptr;
+    void fail_closed(const char* why);
     uint32_t reg_read(uint32_t off) const;
     void reg_write(uint32_t off, uint32_t value);
 };

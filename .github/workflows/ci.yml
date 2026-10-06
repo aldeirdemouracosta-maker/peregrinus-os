@@ -8,29 +8,30 @@ on:
 permissions:
   contents: read
 
+env:
+  # Ubuntu 24.04 LLVM 18 — the toolchain the committed artifacts are reproduced with.
+  TOOLCHAIN_PACKAGES: clang-18 lld-18 llvm-18 python3
+
 jobs:
   check:
+    name: build + host regression
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Instalar toolchain (LLVM 18 do Ubuntu 24.04)
+      - name: Install toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang-18 lld-18 llvm-18 python3
-          sudo ln -sf /usr/bin/clang-18 /usr/local/bin/clang
-          sudo ln -sf /usr/bin/clang++-18 /usr/local/bin/clang++
-          sudo ln -sf /usr/bin/ld.lld-18 /usr/local/bin/ld.lld
-          sudo ln -sf /usr/bin/lld-link-18 /usr/local/bin/lld-link
-          for t in objcopy objdump nm readelf; do sudo ln -sf /usr/bin/llvm-$t-18 /usr/local/bin/llvm-$t; done
-      - name: Registrar versões do toolchain
+          sudo apt-get install -y --no-install-recommends $TOOLCHAIN_PACKAGES
+          ./.github/link-llvm.sh
+      - name: Record toolchain versions
         run: |
           clang --version | tee toolchain.txt
           ld.lld --version | tee -a toolchain.txt
-      - name: Verificar checksums das fontes
-        run: sha256sum -c SOURCE_SHA256SUMS --quiet
-      - name: Regressão completa
+      - name: Verify source checksums
+        run: ./scripts/update-source-sums.sh --check
+      - name: Full host regression
         run: make check
-      - name: Perfis live e controlador UEFI
+      - name: Live profiles and UEFI controller
         run: |
           make qemu-e1000-sandbox
           make current-recovery-live
@@ -43,3 +44,72 @@ jobs:
             build-qemu-e1000/peregrinus.elf
             build-current-recovery-live/peregrinus.elf
             toolchain.txt
+
+  qemu:
+    name: runtime qualification (QEMU BIOS/UEFI, e1000, recovery, stack guard)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install toolchain, QEMU, OVMF and Limine build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $TOOLCHAIN_PACKAGES qemu-system-x86 ovmf xorriso mtools nasm make gcc curl
+          ./.github/link-llvm.sh
+      - name: Fetch and build pinned Limine (sha256-verified)
+        run: ./scripts/fetch-limine.sh
+      - name: Boot every profile and check the serial log
+        run: ./scripts/qemu-qualify.sh
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qemu-serial-logs
+          path: build-qualify/*.log
+
+  fuzz:
+    name: parser fuzzing (libFuzzer + ASan/UBSan)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install toolchain + sanitizer runtimes
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $TOOLCHAIN_PACKAGES libclang-rt-18-dev
+          ./.github/link-llvm.sh
+      - name: Fuzz for 120 seconds
+        env:
+          FUZZ_SECONDS: "120"
+        run: ./tests/fuzz.sh
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: fuzz-crashes
+          path: |
+            build-fuzz/crash-*
+            build-fuzz/leak-*
+            build-fuzz/timeout-*
+
+  reproducible:
+    name: reproducible artifacts
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write      # artifact attestation (main only)
+      attestations: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends $TOOLCHAIN_PACKAGES
+          ./.github/link-llvm.sh
+      - name: Rebuild every artifact from source
+        run: ./scripts/make-artifacts.sh "$RUNNER_TEMP/rebuilt"
+      - name: Committed artifacts must match the rebuild bit for bit
+        run: diff -u artifacts/SHA256SUMS "$RUNNER_TEMP/rebuilt/SHA256SUMS"
+      - name: Attest build provenance
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/rebuilt/*.elf
+            ${{ runner.temp }}/rebuilt/*.efi

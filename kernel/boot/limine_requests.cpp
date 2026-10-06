@@ -22,6 +22,9 @@ volatile limine_hhdm_request hhdm_request = { LIMINE_HHDM_REQUEST_ID, 0, nullptr
 __attribute__((used, section(".limine_requests"), aligned(8)))
 volatile limine_rsdp_request rsdp_request = { LIMINE_RSDP_REQUEST_ID, 0, nullptr };
 
+__attribute__((used, section(".limine_requests"), aligned(8)))
+volatile limine_module_request module_request = { LIMINE_MODULE_REQUEST_ID, 0, nullptr, 0, nullptr };
+
 
 __attribute__((used, section(".limine_requests_end"), aligned(8)))
 volatile uint64_t requests_end_marker[2] = LIMINE_REQUESTS_END_MARKER;

@@ -254,7 +254,26 @@ static EFI_STATUS committed_recovery_boot(EFI_HANDLE image,EFI_SYSTEM_TABLE* st)
     return chainload_limine(image,st,0);
 }
 
-EFI_STATUS EFIAPI efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE* st){
+/* Stack protector (-fstack-protector-strong, MSVC-style /GS ABI on this COFF target). */
+uintptr_t __security_cookie=0x2B992DDFA232ull;
+void __security_check_cookie(uintptr_t cookie){
+    if(cookie!=__security_cookie){for(;;)__asm__ volatile("cli; hlt");}  /* corrupted stack: fail closed, never return */
+}
+__attribute__((no_stack_protector)) static void security_cookie_init(void){
+    uint32_t a=1,b=0,c=0,d=0;__asm__ volatile("cpuid":"+a"(a),"=b"(b),"=c"(c),"=d"(d));
+    uint64_t seed=0;unsigned char ok=0;
+    if(c&(1u<<30)){for(int i=0;i<32&&!ok;++i)__asm__ volatile("rdrand %0; setc %1":"=r"(seed),"=qm"(ok));}
+    if(!ok){uint32_t lo,hi;__asm__ volatile("rdtsc":"=a"(lo),"=d"(hi));seed=(((uint64_t)hi<<32)|lo)*0x9E3779B97F4A7C15ull;}
+    __security_cookie^=seed&0x0000FFFFFFFFFFFFull;  /* MSVC convention: top 16 bits clear */
+}
+
+static EFI_STATUS controller_main(EFI_HANDLE image,EFI_SYSTEM_TABLE* st);
+__attribute__((no_stack_protector)) EFI_STATUS EFIAPI efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE* st){
+    security_cookie_init();  /* before any protected frame exists */
+    return controller_main(image,st);
+}
+
+static EFI_STATUS controller_main(EFI_HANDLE image,EFI_SYSTEM_TABLE* st){
     (void)g_force_reloc;out_ascii(st,"Peregrinus OS Muro 1.0 Stable Trusted Boot Controller\r\n");
     if(!secure_boot_active(st)){out_ascii(st,"Secure Boot: NOT TRUSTED; CURRENT-only path\r\n");(void)consume_request(st);(void)clear_oneshot(st);return chainload_limine(image,st,0);}
     out_ascii(st,"Secure Boot: ACTIVE\r\n");

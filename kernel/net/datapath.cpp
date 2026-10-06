@@ -5,6 +5,7 @@ using namespace security::firewall;
 bool new_ingress_candidate(const PacketV4& p){
     if(p.direction!=Direction::ingress)return false;
     if(p.protocol==Protocol::tcp){constexpr uint8_t SYN=0x02,ACK=0x10;return (p.tcp_flags&SYN)!=0&&(p.tcp_flags&ACK)==0;}
+    if(p.protocol==Protocol::icmp)return p.icmp_type==8;  // echo request: unsolicited, so rate-limited too
     return p.protocol==Protocol::udp;
 }
 }
@@ -28,6 +29,11 @@ static uint16_t be16(const uint8_t*p){return uint16_t((uint16_t(p[0])<<8)|p[1]);
 static void put16(uint8_t*p,uint16_t v){p[0]=uint8_t(v>>8);p[1]=uint8_t(v);}static uint16_t csum(const uint8_t*p,size_t n){uint32_t s=0;for(size_t i=0;i<n;i+=2)s+=be16(p+i);while(s>>16)s=(s&0xffffu)+(s>>16);return uint16_t(~s);}
 static size_t udp_frame(uint8_t*f,uint32_t s,uint32_t d,uint16_t sp,uint16_t dp){for(size_t i=0;i<42;++i)f[i]=0;f[12]=8;f[13]=0;uint8_t*ip=f+14;ip[0]=0x45;put16(ip+2,28);ip[8]=64;ip[9]=17;for(int i=0;i<4;++i){ip[12+i]=uint8_t(s>>(24-8*i));ip[16+i]=uint8_t(d>>(24-8*i));}put16(ip+10,csum(ip,20));uint8_t*u=ip+20;put16(u,sp);put16(u+2,dp);put16(u+4,8);return 42;}
 bool datapath_self_test(){
-    using namespace security::firewall;Datapath d;d.reset();AllowRuleV4 dns{7,true,Direction::egress,Protocol::udp,ipv4(10,0,2,0),24,ipv4(10,0,2,3),32,1024,65535,53,53};if(!d.add_allow_rule(dns))return false;uint8_t f[64]{};size_t n=udp_frame(f,ipv4(10,0,2,15),ipv4(10,0,2,3),53000,53);auto x=d.inspect(Direction::egress,f,n);if(x.verdict!=Verdict::allow||x.reason!=DatapathReason::explicit_allow)return false;n=udp_frame(f,ipv4(10,0,2,3),ipv4(10,0,2,15),53,53000);x=d.inspect(Direction::ingress,f,n);if(x.verdict!=Verdict::allow||x.reason!=DatapathReason::stateful_reply)return false;n=udp_frame(f,ipv4(9,9,9,9),ipv4(10,0,2,15),1000,9999);x=d.inspect(Direction::ingress,f,n);if(x.verdict!=Verdict::deny)return false;return d.audit_count()==3&&d.allowed()==2&&d.denied()==1;
+    using namespace security::firewall;Datapath d;d.reset();AllowRuleV4 dns{7,true,Direction::egress,Protocol::udp,ipv4(10,0,2,0),24,ipv4(10,0,2,3),32,1024,65535,53,53};if(!d.add_allow_rule(dns))return false;uint8_t f[64]{};size_t n=udp_frame(f,ipv4(10,0,2,15),ipv4(10,0,2,3),53000,53);auto x=d.inspect(Direction::egress,f,n);if(x.verdict!=Verdict::allow||x.reason!=DatapathReason::explicit_allow)return false;n=udp_frame(f,ipv4(10,0,2,3),ipv4(10,0,2,15),53,53000);x=d.inspect(Direction::ingress,f,n);if(x.verdict!=Verdict::allow||x.reason!=DatapathReason::stateful_reply)return false;n=udp_frame(f,ipv4(9,9,9,9),ipv4(10,0,2,15),1000,9999);x=d.inspect(Direction::ingress,f,n);if(x.verdict!=Verdict::deny)return false;if(!(d.audit_count()==3&&d.allowed()==2&&d.denied()==1))return false;
+    // ICMP echo requests are unsolicited and therefore rate-limited per source.
+    Datapath e;e.reset();AllowRuleV4 icmp_in{9,true,Direction::ingress,Protocol::icmp,0,0,ipv4(10,0,2,15),32,0,65535,0,65535};if(!e.add_allow_rule(icmp_in))return false;
+    uint8_t g[64]{};for(size_t i=0;i<14;++i)g[i]=0;g[12]=8;uint8_t*ip=g+14;ip[0]=0x45;put16(ip+2,28);ip[8]=64;ip[9]=1;for(int i=0;i<4;++i){ip[12+i]=uint8_t(ipv4(10,0,2,77)>>(24-8*i));ip[16+i]=uint8_t(ipv4(10,0,2,15)>>(24-8*i));}put16(ip+10,csum(ip,20));ip[20]=8;
+    size_t allowed=0,burst=0;for(int i=0;i<20;++i){const auto r=e.inspect(Direction::ingress,g,42);if(r.verdict==Verdict::allow)++allowed;else if(r.reason==DatapathReason::burst_guard)++burst;}
+    return allowed==burst::max_new_flows_per_window&&burst==20-burst::max_new_flows_per_window;
 }
 }

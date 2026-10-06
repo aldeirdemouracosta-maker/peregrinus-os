@@ -48,33 +48,20 @@ struct Decision {
     uint32_t rule_id;
 };
 
-struct AuditEvent {
-    uint64_t sequence;
-    Decision decision;
-    PacketV4 packet;
-};
-
 inline constexpr size_t max_rules = 16;
-inline constexpr size_t audit_capacity = 64;
 
+// Stateless rule evaluation only. Auditing is done once, by net::Datapath, which also knows
+// the parse status and the stateful/burst outcome.
 class Engine {
 public:
     void reset();
     bool add_allow_rule(const AllowRuleV4& rule);
     Decision evaluate(const PacketV4& packet);
     size_t rule_count() const { return rule_count_; }
-    size_t audit_count() const { return audit_count_; }
-    bool audit_get_oldest(size_t index, AuditEvent& out) const;
 
 private:
     AllowRuleV4 rules_[max_rules]{};
     size_t rule_count_ = 0;
-    AuditEvent audit_[audit_capacity]{};
-    size_t audit_head_ = 0;
-    size_t audit_count_ = 0;
-    uint64_t next_sequence_ = 1;
-
-    void audit(const PacketV4& packet, const Decision& decision);
 };
 
 uint32_t ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);

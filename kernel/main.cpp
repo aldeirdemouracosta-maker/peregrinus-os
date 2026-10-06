@@ -1,6 +1,8 @@
 #include <stdint.h>
+#include <peregrinus/release_profile.h>
 #include "console/serial.hpp"
 #include "console/framebuffer.hpp"
+#include "console/text_console.hpp"
 #include "console/format.hpp"
 #include "arch/x86_64/cpu.hpp"
 #include "arch/x86_64/gdt.hpp"
@@ -31,21 +33,50 @@
 #include "security/itco_watchdog.hpp"
 #include "security/firewall.hpp"
 #include "net/ethernet_ipv4.hpp"
-#include "net/hook.hpp"
 #include "net/nic_probe.hpp"
 #include "net/sandbox_service.hpp"
 #include "storage/recovery_journal.hpp"
 #include "storage/recovery_journal_probe.hpp"
 #include "config/features.hpp"
+#if defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1
+#include "shell/ai_bridge.hpp"
+#endif
+#include "arch/x86_64/kstack.hpp"
+#include "input/keyboard.hpp"
+#include "input/ps2.hpp"
+#include "shell/shell.hpp"
+#include "arch/x86_64/interrupts.hpp"
+#if defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1
+#include "llm/service.hpp"
+#endif
+
+// A profile that commits boot success must also be able to read the GPT and the journal;
+// otherwise the commit can never be confirmed and every boot ends in a panic.
+static_assert(!peregrinus::features::recovery_journal_commit_live||(peregrinus::features::ahci_dma_read_live&&peregrinus::features::recovery_journal_read_live),"recovery commit profile without a GPT/journal read path");
+
+// The image epoch is a build-time constant: check it at build time instead of pretending to
+// verify it at runtime. Boot-time epoch enforcement belongs to the UEFI controller + TPM.
+static_assert(peregrinus::security::root_trust::security_epoch>=peregrinus::security::root_trust::minimum_security_epoch,"image security epoch below the minimum");
 
 static void halt_forever(){for(;;)asm volatile("hlt");}
 static void require_watchdog(peregrinus::security::watchdog::Stage s){if(!peregrinus::security::watchdog::checkpoint(s))peregrinus::panic::stop("Peregrinus boot watchdog sequence violation");}
 
+static void kmain_stage2();
+static void run_shell(const peregrinus::shell::SystemInfo& info);
+static const char* current_layout();
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse();
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask();
+extern "C" const char* peregrinus_stack_guard_source;
+
 extern "C" void kmain(){
     using namespace peregrinus;
     security::watchdog::reset();require_watchdog(security::watchdog::Stage::boot_entry);
-    serial::init();serial::writeln("");serial::writeln("====================================");serial::writeln(" Peregrinus OS — Purgatorio 0.1 Admission Gate");serial::writeln("====================================");
+    serial::init();
+    // Screen console first, so the whole boot log (and any panic) is readable without a serial cable.
+    if(boot::framebuffer_request.response&&boot::framebuffer_request.response->framebuffer_count&&framebuffer::init(boot::framebuffer_request.response->framebuffers[0])&&text_console::init())serial::set_mirror(text_console::putc);
+    serial::writeln("");serial::writeln("====================================");serial::writeln(" Peregrinus OS — " PEREGRINUS_RELEASE_NAME);serial::writeln("====================================");
     if(!LIMINE_BASE_REVISION_SUPPORTED(boot::base_revision))panic::stop("Limine base revision unsupported");
+    serial::writeln(text_console::ready()?"Console: framebuffer text (mirror of serial)":"Console: serial only (no usable framebuffer)");
     if(boot::bootloader_info_request.response){serial::write("Bootloader: ");serial::write(boot::bootloader_info_request.response->name);serial::write(" ");serial::writeln(boot::bootloader_info_request.response->version);}
     cpu::report();gdt::init();idt::init();require_watchdog(security::watchdog::Stage::cpu_ready);
 
@@ -54,20 +85,35 @@ extern "C" void kmain(){
     memory::init_page_allocator(boot::memmap_request.response);
     if(!paging::init())serial::writeln("WARNING: Peregrinus page mapper unavailable; MMIO will remain blocked");
     if(!mmio::init())serial::writeln("WARNING: dedicated MMIO mapper unavailable");
+    uint64_t stack_top=0;
+    if(!kstack::create(stack_top))panic::stop("guard-page kernel stack unavailable");
+    serial::writeln("Kernel stack: 64 KiB with unmapped guard page (PML4 slot 509)");
+    peregrinus_switch_stack(stack_top,kmain_stage2);
+}
+
+#if defined(PEREGRINUS_DIAG_STACK_OVERFLOW) && PEREGRINUS_DIAG_STACK_OVERFLOW == 1
+// Qualification only: recurse until the guard page below the kernel stack is hit.
+__attribute__((noinline)) static unsigned overflow_stack(unsigned depth){volatile char pad[512];pad[0]=char(depth);if(depth==0xffffffffu)return 0;return overflow_stack(depth+1)+pad[0];}
+#endif
+
+static void kmain_stage2(){
+    using namespace peregrinus;
+    {serial::write("Stack protector: ACTIVE, canary from ");serial::writeln(peregrinus_stack_guard_source);}
+#if defined(PEREGRINUS_DIAG_STACK_OVERFLOW) && PEREGRINUS_DIAG_STACK_OVERFLOW == 1
+    serial::writeln("DIAGNOSTIC: overflowing the kernel stack on purpose");
+    (void)overflow_stack(0);
+#endif
     require_watchdog(security::watchdog::Stage::memory_ready);
 
-    serial::write("Boot slot: ");serial::writeln(security::root_trust::slot_name(security::root_trust::running_slot()));
+    serial::write("Compiled slot (not attested by the kernel): ");serial::writeln(security::root_trust::slot_name(security::root_trust::running_slot()));
     {char g[24];format::dec64(security::root_trust::build_generation,g);serial::write("Build generation: ");serial::writeln(g);}
     {char e[24];format::dec64(security::root_trust::security_epoch,e);serial::write("Security epoch: ");serial::writeln(e);}
-    const auto epoch_guard=security::root_trust::evaluate_epoch(security::root_trust::minimum_security_epoch);
-    if(!epoch_guard.accepted)panic::stop("Peregrinus security epoch below minimum");
     const auto integrity=security::integrity::verify_kernel_text();
     serial::write("Kernel integrity manifest: ");serial::writeln(integrity.manifest_valid?"VALID":"INVALID");
-    serial::write("Kernel .text SHA-256: ");serial::writeln(integrity.trusted()?"PASS":"FAIL");
+    serial::write("Kernel .text SHA-256 (corruption check, unsigned): ");serial::writeln(integrity.trusted()?"PASS":"FAIL");
     if(!integrity.trusted())panic::stop("Peregrinus Guard kernel integrity failure");
     require_watchdog(security::watchdog::Stage::integrity_ready);
 
-    if(boot::framebuffer_request.response&&boot::framebuffer_request.response->framebuffer_count){auto* fb=boot::framebuffer_request.response->framebuffers[0];if(framebuffer::init(fb)){framebuffer::status_bars();serial::writeln("Framebuffer: initialized");}else serial::writeln("Framebuffer: unsupported mode");}
     acpi::init(boot::rsdp_request.response,boot::hhdm_request.response);
     pci::enumerate_readonly();
     net::nic::probe_readonly();
@@ -87,20 +133,19 @@ extern "C" void kmain(){
 
     const auto policy=boot_policy::evaluate(disk,volume::catalog(),recovery);
     serial::write("Boot health: ");serial::writeln(boot_policy::health_name(policy.health));
-    serial::write("Noe policy action: ");serial::writeln(boot_policy::action_name(policy.action));
-    serial::writeln(features::firewall_default_deny?"Firewall default policy: DENY":"Firewall default policy: INVALID");
-    serial::writeln(features::firewall_frame_hook_foundation?"Firewall Ethernet/IPv4 hook: READY (synthetic/test path)":"Firewall Ethernet/IPv4 hook: INVALID");
+    serial::write("Disk policy action: ");serial::writeln(boot_policy::action_name(policy.action));
+    serial::writeln("Firewall default policy: DENY (allowlist)");
     serial::writeln(features::firewall_packet_hook_live?"Firewall NIC datapath hook: LIVE":"Firewall NIC datapath hook: BLOCKED");
-    const auto guard=security::guard_policy::evaluate(security::guard_policy::IntegrityState::trusted,policy);
+    const auto guard=security::guard_policy::evaluate(security::guard_policy::IntegrityState::trusted,policy,features::storage_policy_required);
     serial::write("Peregrinus Guard action: ");serial::writeln(security::guard_policy::action_name(guard.action));
     serial::write("Rollback eligibility: ");serial::writeln(guard.rollback_eligible?"ELIGIBLE":"NO");
-    serial::write("Running authenticated slot: ");serial::writeln(security::root_trust::slot_name(security::root_trust::running_slot()));
     serial::write("Purgatorio component admission: ");serial::writeln(security::quarantine::registry().saturated()?"FAIL-CLOSED/SATURATED":"READY/EMPTY");
     require_watchdog(security::watchdog::Stage::policy_ready);
 
     if(guard.action==security::guard_policy::Action::halt_fail_closed){serial::writeln("PEREGRINUS GUARD: fail-closed halt.");halt_forever();}
     if(guard.action==security::guard_policy::Action::recovery_readonly)serial::writeln("PEREGRINUS GUARD: recovery/read-only path only.");
     if(guard.action==security::guard_policy::Action::boot_readonly)serial::writeln("PEREGRINUS GUARD: trusted read-only system path allowed.");
+    if(guard.action==security::guard_policy::Action::boot_passive)serial::writeln("PEREGRINUS GUARD: passive boot; this build has no storage path.");
     require_watchdog(security::watchdog::Stage::complete);
     const uint8_t running_slot=security::root_trust::running_slot()==security::root_trust::Slot::last_known_good?PEREGRINUS_RJ_SLOT_LKG:PEREGRINUS_RJ_SLOT_CURRENT;
     const auto confirm=live_catalog?recovery_journal_probe::confirm_boot_success(disk.disk_guid,running_slot,security::root_trust::build_generation,security::root_trust::security_epoch):recovery_journal_probe::CommitResult::recovery_unavailable;
@@ -108,9 +153,113 @@ extern "C" void kmain(){
     if(features::recovery_journal_commit_live&&confirm!=recovery_journal_probe::CommitResult::confirmed)panic::stop("Peregrinus direct recovery-journal success commit failed");
     hw::init();hw::print();
     if constexpr(features::nic_driver_live){
-        serial::writeln("Purgatorio 0.1 qualification profile: starting gated e1000 polling datapath.");
-        if(!net::sandbox::service().init())panic::stop("Muro e1000 qualification init failed");
-        for(;;){const size_t n=net::sandbox::service().poll(8);if(n==0)asm volatile("pause");}
+        serial::writeln("e1000 qualification profile: starting gated polling datapath.");
+        if(!net::sandbox::service().init())panic::stop("e1000 qualification init failed");
+    } else {
+        serial::writeln("Boot complete: firewall/network stack present, live NIC ownership remains BLOCKED in this build.");
     }
-    serial::writeln("Purgatorio 0.1 SAFE: firewall/network stack present, live NIC ownership remains BLOCKED.");halt_forever();
+    const auto& m=hw::manifest();
+    const bool kbd=ps2::init();
+    const bool irq=interrupts::init(kbd,serial::present());
+    serial::writeln(irq?"Interrupts: PIC/PIT live (100 Hz timer, keyboard and COM1 IRQs); idle CPU halts":"Interrupts: no timer ticks; staying in polling mode (fail-closed fallback)");
+    const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
+        security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),kbd,
+        m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present,
+        irq,interrupts::timer_hz,interrupts::ticks,current_layout,llm_converse(),ai_ask()};
+    run_shell(info);
+}
+
+// Input loop (interrupts stay off, so everything is polled): keyboard and serial feed one line
+// editor; the e1000 qualification datapath, when present, is serviced in the same loop.
+static void shell_out(const char* s){peregrinus::serial::write(s);}
+static peregrinus::keyboard::Decoder g_keys;
+static peregrinus::shell::HolycBlock g_hc;
+#if defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){
+    peregrinus::cpu::enable_sse();  // before the first call into SSE-compiled engine code
+    return peregrinus::llm::service::init(peregrinus::boot::module_request.response,shell_out)?peregrinus::llm::service::converse:nullptr;
+}
+#else
+static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){return nullptr;}
+#endif
+#if defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1
+// Serial AI bridge: the question leaves as one framed write on COM1 (not mirrored to the screen);
+// the wait is bounded by the timer deadline and Esc. The answer is sanitized text, only printed.
+static uint32_t g_ai_seq=0;
+static bool ai_serial_byte(uint8_t& b){return peregrinus::interrupts::next_serial_byte(b);}
+static bool ai_scancode(uint8_t& sc){return peregrinus::interrupts::next_scancode(sc);}
+static void ai_question(const char* q,bool fresh,peregrinus::shell::Output out){
+    using namespace peregrinus;
+    if(!interrupts::active()){out("Ponte de IA indisponível: requer o timer (interrupções ativas).\n");return;}
+    if(!serial::present()){out("Ponte de IA indisponível: não há porta serial COM1.\n");return;}
+    static char frame[shell::LineEditor::capacity*2+32];
+    static ai_bridge::AnswerParser parser;
+    const uint32_t seq=++g_ai_seq;
+    const size_t n=ai_bridge::encode_question(seq,fresh,q,frame,sizeof(frame));
+    if(!n){out("Pergunta longa demais.\n");return;}
+    serial::write_raw(frame,n);
+    out(fresh?"(nova conversa) aguardando a IA do Linux... Esc cancela\n":"aguardando a IA do Linux... Esc cancela\n");
+    parser.reset(seq);
+    const ai_bridge::Io io{ai_serial_byte,ai_scancode,interrupts::ticks,interrupts::idle_wait};
+    const uint64_t deadline=interrupts::ticks()+uint64_t(ai_bridge::answer_timeout_seconds)*interrupts::timer_hz;
+    switch(ai_bridge::wait(parser,io,deadline)){
+    case ai_bridge::Outcome::answered:
+        out(parser.text());
+        if(parser.length()==0||parser.text()[parser.length()-1]!='\n')out("\n");
+        if(parser.truncated())out("[resposta cortada no limite de 2048 bytes]\n");
+        break;
+    case ai_bridge::Outcome::host_error: out("IA indisponível: ");out(parser.text());out("\n");break;
+    case ai_bridge::Outcome::cancelled: out("Pergunta cancelada (Esc).\n");break;
+    case ai_bridge::Outcome::timed_out: out("IA indisponível: sem resposta em 120 s (a ponte está rodando no Linux?).\n");break;
+    case ai_bridge::Outcome::malformed: out("Resposta inválida da ponte; descartada.\n");break;
+    }
+}
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask(){return ai_question;}
+#else
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask(){return nullptr;}
+#endif
+static const char* current_layout(){return peregrinus::keyboard::layout_name(g_keys.layout());}
+static void run_shell(const peregrinus::shell::SystemInfo& info){
+    using namespace peregrinus;
+    serial::writeln(info.keyboard?"Shell: keyboard (PS/2) and serial input. Type 'ajuda'.":"Shell: serial input only (no PS/2 controller). Type 'ajuda'.");
+    g_keys.reset();shell::LineEditor ed;
+    serial::write(shell::prompt());
+    for(;;){
+        bool idle=true;
+        if constexpr(features::nic_driver_live){if(net::sandbox::service().poll(8))idle=false;}
+        // Serial bytes are UTF-8; keyboard characters are Latin-1 (up to two per scancode).
+        char keys[2];uint8_t nkeys=0,sc=0,b=0;char sb=0;bool from_serial=false,line_done=false;
+        if(interrupts::active()){
+            if(interrupts::next_serial_byte(b)){idle=false;from_serial=true;sb=static_cast<char>(b);}
+            else if(interrupts::next_scancode(sc)){idle=false;nkeys=g_keys.feed(sc,keys);}
+        }else{
+            if(serial::poll_input(sb)){idle=false;from_serial=true;}
+            else if(ps2::poll(sc)){idle=false;nkeys=g_keys.feed(sc,keys);}
+        }
+        if(from_serial)line_done=ed.feed_utf8(sb,shell_out);
+        for(uint8_t i=0;i<nkeys&&!line_done;++i)line_done=ed.feed(keys[i],shell_out);
+        if(!from_serial&&nkeys==0){
+            if(idle){
+                // The e1000 qualification datapath is polled, so that profile keeps spinning.
+                if constexpr(features::nic_driver_live)asm volatile("pause");
+                else interrupts::idle_wait();
+            }
+            continue;
+        }
+        if(!line_done)continue;
+        if(g_hc.active()){
+            g_hc.feed_line(ed.line(),shell_out);ed.clear();
+            serial::write(g_hc.active()?shell::HolycBlock::prompt():shell::prompt());
+            continue;
+        }
+        const auto action=shell::execute(ed.line(),info,shell_out);
+        ed.clear();
+        if(action==shell::Action::holyc_block){g_hc.begin();serial::write(shell::HolycBlock::prompt());continue;}
+        if(action==shell::Action::clear_screen)text_console::clear();
+        if(action==shell::Action::reboot){ps2::request_reset();serial::writeln("Reset was ignored by the hardware; halting.");halt_forever();}
+        if(action==shell::Action::halt)halt_forever();
+        if(action==shell::Action::layout_us)g_keys.set_layout(keyboard::Layout::us);
+        if(action==shell::Action::layout_abnt2)g_keys.set_layout(keyboard::Layout::abnt2);
+        serial::write(shell::prompt());
+    }
 }

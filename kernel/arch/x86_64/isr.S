@@ -57,6 +57,7 @@ peregrinus_isr_common:
     movq 16(%rsp), %rdx
     movq 24(%rsp), %rcx
     movq 32(%rsp), %r8
+    andq $-16, %rsp            # SysV ABI: 16-byte alignment at the call (handler never returns)
     call peregrinus_exception_dispatch
 1:  cli
     hlt

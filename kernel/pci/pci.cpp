@@ -50,5 +50,9 @@ Summary enumerate_readonly(){
 uint32_t config_read32(const Device& d,uint16_t off){return read32(d.bus,d.slot,d.function,off);}uint16_t config_read16(const Device& d,uint16_t off){return read16(d.bus,d.slot,d.function,off);}
 uint16_t command_register(const Device& d){return config_read16(d,0x04);}bool memory_space_enabled(const Device& d){return (command_register(d)&(1u<<1))!=0;}
 bool enable_memory_busmaster(const Device& d){uint32_t v=read32(d.bus,d.slot,d.function,0x04);const uint32_t nv=v|(1u<<1)|(1u<<2);if(nv!=v)write32(d.bus,d.slot,d.function,0x04,nv);return (read32(d.bus,d.slot,d.function,0x04)&((1u<<1)|(1u<<2)))==((1u<<1)|(1u<<2));}
+static bool set_command_bits(const Device& d,uint32_t bits){uint32_t v=read32(d.bus,d.slot,d.function,0x04);const uint32_t nv=v|bits;if(nv!=v)write32(d.bus,d.slot,d.function,0x04,nv);return (read32(d.bus,d.slot,d.function,0x04)&bits)==bits;}
+bool enable_memory_space(const Device& d){return set_command_bits(d,1u<<1);}
+bool enable_bus_master(const Device& d){return set_command_bits(d,1u<<2);}
+void disable_bus_master(const Device& d){const uint32_t v=read32(d.bus,d.slot,d.function,0x04);if(v&(1u<<2))write32(d.bus,d.slot,d.function,0x04,v&~(1u<<2)&0xffffu);}
 const Summary& summary(){return g_summary;}const Device* devices(){return g_devices;}uint32_t device_count(){return g_device_count;}
 }

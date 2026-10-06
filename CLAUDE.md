@@ -16,13 +16,17 @@ Kernel x86_64 freestanding (C++23, clang/ld.lld, boot via Limine) com controlado
 
 - Build SAFE: `make`
 - Regressão completa: `make check` (deve terminar com código 0)
-- Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`
+- Qualificação em runtime (QEMU): `./scripts/fetch-limine.sh && ./scripts/qemu-qualify.sh`
+- Fuzzing dos parsers: `FUZZ_SECONDS=60 ./tests/fuzz.sh`
+- Artefatos reprodutíveis: `./scripts/make-artifacts.sh` (CI compara com `artifacts/SHA256SUMS`)
+- Perfis: `make qemu-e1000-sandbox`, `make current-recovery-live`, `make trusted-boot-controller`, `make llm-local` (experimental; SSE só nele), `make ia-ponte` (SAFE + `pergunte` pela serial; lado Linux em `host/linux-ia/`)
 - Limpeza: `make clean`
 
 ## Convenções
 
 - Release profile autoritativo: `include/peregrinus/release_profile.h` (generation/epoch nunca hardcoded em scripts).
 - Toda correção vem com teste host-side em `tests/` ligado ao `make check`.
-- Ao alterar fontes, regenerar `SOURCE_SHA256SUMS`:
-  `awk '{print $2}' SOURCE_SHA256SUMS | xargs sha256sum > SOURCE_SHA256SUMS.new && mv SOURCE_SHA256SUMS.new SOURCE_SHA256SUMS`
+- Ao alterar fontes, regenerar `SOURCE_SHA256SUMS` (inclui arquivos novos): `./scripts/update-source-sums.sh`
+- Testes host usam `tests/host-cxx.sh` (mesmo compilador e flags, `-Werror`).
+- Laços de espera de hardware: use `spin::until` (`kernel/runtime/spin.hpp`); nunca `while(spins--)` seguido de `if(!spins)`.
 - Leia de memória mapeada por DMA/MMIO sempre via `volatile`; laços de espera devem ter orçamento que realmente expira.

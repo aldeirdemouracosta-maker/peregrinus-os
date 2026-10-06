@@ -12,9 +12,8 @@ static Manifest g{};
 static void copy_vendor(char out[13]) {
     unsigned eax=0,ebx=0,ecx=0,edx=0;
     asm volatile("cpuid":"+a"(eax),"=b"(ebx),"=c"(ecx),"=d"(edx));
-    *reinterpret_cast<uint32_t*>(out+0)=ebx;
-    *reinterpret_cast<uint32_t*>(out+4)=edx;
-    *reinterpret_cast<uint32_t*>(out+8)=ecx;
+    const uint32_t w[3]={ebx,edx,ecx};
+    for(int i=0;i<12;++i)out[i]=char(w[i/4]>>(8*(i%4)));
     out[12]=0;
 }
 void init(){

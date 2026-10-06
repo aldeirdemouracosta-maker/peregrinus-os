@@ -1,5 +1,6 @@
-ee3e6c7438d90f537f45873474175c60ed2d9fc35d034f44d9ed50724bfa2938  peregrinus-purgatorio-0.1-current-gen23-e1000-qemu.elf
-26057b40fd0547cd583f6732bf5571a1b10536e8066c5ec27ce4c29154cc58a2  peregrinus-purgatorio-0.1-current-gen23-recovery-live.elf
-29d99c2de5b68444ae89753f14f7b023dd4f801ce290bf2423bb3e383b1545b6  peregrinus-purgatorio-0.1-current-gen23-safe.elf
-17eba42dde69326ae6c9ba00c6cd2864043ce6ed90065199ab58e4726b481b6a  peregrinus-purgatorio-0.1-boot-controller-recovery-live.efi
-7a9aff2e8d20e37ac7190c61340b6a4258d4f5f4054c1dacb768b60d64b0c6c2  peregrinus-purgatorio-0.1-boot-controller-safe.efi
+9e8440b1c0d25fe480fe1cd6c00cc7a780efcb28582581c573e89c6d044df120  peregrinus-purgatorio-0.1.1-current-gen24-e1000-qemu.elf
+33239931ac73733c37e4bd40145a12ccb5ade403ed5e0d41e86cd2abf6bae40e  peregrinus-purgatorio-0.1.1-current-gen24-llm-local.elf
+e3952d2b53475e55035197f995a45f5a63eb009225d5e010bf83bef117d37fec  peregrinus-purgatorio-0.1.1-current-gen24-recovery-live.elf
+d8259a517f416b2880413b9e9220ebc7cdf9d034b29bbb734770b53ded72cf9c  peregrinus-purgatorio-0.1.1-current-gen24-safe.elf
+36aa2c916bb97657b7e83c1505dd2b678d6b4843bbeba7bfcbb256c2997957e1  peregrinus-purgatorio-0.1.1-boot-controller-recovery-live.efi
+8e996cf6d9643b4c4109f61fbba03afd2a757f040b4a4422e2fb361efa8d9888  peregrinus-purgatorio-0.1.1-boot-controller-safe.efi
