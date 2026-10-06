@@ -3,7 +3,7 @@ set -euo pipefail
 ELF="${1:-build/peregrinus.elf}"
 [[ -f "$ELF" ]]
 SYMS="$(nm -C "$ELF")"
-for s in 'e1000::Driver::init_qemu_sandbox' 'sandbox::Service::init' 'memory::alloc_dma32_page' 'llm::Engine' 'llm::service' 'cpu::enable_sse'; do
+for s in 'e1000::Driver::init_qemu_sandbox' 'sandbox::Service::init' 'memory::alloc_dma32_page' 'llm::Engine' 'llm::service' 'cpu::enable_sse' 'ai_bridge::'; do
   if grep -Fq "$s" <<<"$SYMS"; then echo "FAIL: SAFE ELF contains live capability: $s" >&2; exit 1; fi
 done
 # Hardening present in the final binary, not just in the build flags.
@@ -13,4 +13,4 @@ done
 if command -v llvm-objdump >/dev/null 2>&1 && llvm-objdump -d "$ELF" | grep -q '%fs:'; then
   echo 'FAIL: stack protector uses %fs (TLS) but the kernel has no TLS segment' >&2; exit 1
 fi
-echo 'PASS: SAFE ELF contains no e1000 ownership/service or DMA32 allocator; stack protector and guard-page stack are linked in.'
+echo 'PASS: SAFE ELF contains no e1000 ownership/service, DMA32 allocator, LLM or serial AI bridge; stack protector and guard-page stack are linked in.'

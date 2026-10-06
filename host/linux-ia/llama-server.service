@@ -1,0 +1,22 @@
+# llama-server na GPU para o Peregrinus OS. Escuta só em 127.0.0.1:8080 (o firewall do systemd
+# ainda bloqueia qualquer endereço que não seja local) e roda sem privilégios.
+[Unit]
+Description=llama-server (IA local na GPU para o Peregrinus OS)
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/peregrinus-ia.conf
+ExecStart=/opt/llama.cpp/bin/llama-server --host 127.0.0.1 --port 8080 -m ${MODELO} -ngl ${CAMADAS_GPU} -c ${CONTEXTO}
+DynamicUser=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

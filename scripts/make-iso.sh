@@ -16,7 +16,8 @@ case "$PROFILE" in
   e1000) make qemu-e1000-sandbox; BUILD=build-qemu-e1000 ;;
   double-fault-test) make double-fault-test-kernel; BUILD=build-double-fault-test ;;
   llm-local) make llm-local; BUILD=build-llm-local ;;
-  *) echo "usage: $0 [safe|dma-test|recovery-commit-test|recovery-live|e1000|double-fault-test|llm-local]" >&2; exit 2 ;;
+  ia-ponte) make ia-ponte; BUILD=build-ia-ponte ;;
+  *) echo "usage: $0 [safe|dma-test|recovery-commit-test|recovery-live|e1000|double-fault-test|llm-local|ia-ponte]" >&2; exit 2 ;;
 esac
 NAME="peregrinus-$TAG-$PROFILE.iso"
 rm -rf "$BUILD/iso_root"

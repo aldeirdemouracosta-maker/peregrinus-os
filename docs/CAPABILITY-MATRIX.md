@@ -36,4 +36,5 @@
 | Keyboard layouts ABNT2 (default, dead keys) and US | QEMU-verified | yes |
 | HolyC subset interpreter in the shell (bounded) | QEMU-verified + fuzzed | yes |
 | Local LLM (llm-local profile only): allowlisted model modules, `conversa` | absent (verified) | QEMU-verified (byte-identical to llama2.c) |
+| Serial AI bridge (ia-ponte profile only): `pergunte` to an LLM on a Linux host, answer sanitized and only printed | absent (verified) | QEMU-verified with a fake LLM server; GPU/CUDA host NOT RUN |
 | Physical hardware | NOT RUN | NOT RUN |

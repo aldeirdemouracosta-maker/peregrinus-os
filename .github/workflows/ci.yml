@@ -84,9 +84,9 @@ jobs:
         with:
           name: fuzz-crashes
           path: |
-            crash-*
-            leak-*
-            timeout-*
+            build-fuzz/crash-*
+            build-fuzz/leak-*
+            build-fuzz/timeout-*
 
   reproducible:
     name: reproducible artifacts

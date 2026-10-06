@@ -85,6 +85,7 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         line(out, "  teclado    mostra ou troca o layout: teclado abnt2 | teclado us");
         line(out, "  hc <código> roda HolyC (subconjunto); 'hc' sozinho abre várias linhas até 'fim'");
         line(out, "  conversa <texto>   IA local (perfil llm-local); 'conversa -g <texto>' = determinístico");
+        line(out, "  pergunte <texto>   IA do Linux pela serial (perfil ia-ponte); 'pergunte -n <texto>' = nova conversa");
         line(out, "  limpar     limpa a tela");
         line(out, "  reiniciar  reinicia o computador");
         line(out, "  parar      para o sistema (pode desligar depois)");
@@ -141,6 +142,15 @@ Action execute(const char* text, const SystemInfo& info, Output out) {
         bool greedy = false;
         if (p[0] == '-' && p[1] == 'g' && (p[2] == ' ' || p[2] == 0)) { greedy = true; p += 2; while (*p == ' ') ++p; }
         info.converse(p, greedy, out);
+        return Action::none;
+    }
+    if (same(cmd, "pergunte") || same(cmd, "ask")) {
+        if (!info.ask) { line(out, "Ponte de IA não incluída nesta build (use o perfil ia-ponte)."); return Action::none; }
+        const char* p = text; while (*p == ' ') ++p; while (*p && *p != ' ') ++p; while (*p == ' ') ++p;
+        bool fresh = false;
+        if (p[0] == '-' && p[1] == 'n' && (p[2] == ' ' || p[2] == 0)) { fresh = true; p += 2; while (*p == ' ') ++p; }
+        if (!*p) { line(out, "Uso: pergunte <texto>  (ou: pergunte -n <texto> para começar outra conversa)"); return Action::none; }
+        info.ask(p, fresh, out);
         return Action::none;
     }
     if (same(cmd, "limpar") || same(cmd, "clear")) return Action::clear_screen;

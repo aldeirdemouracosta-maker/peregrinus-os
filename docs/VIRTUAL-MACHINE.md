@@ -47,10 +47,11 @@ Usa o mesmo boot BIOS/UEFI que o QEMU, mas **ainda não foi testado**.
 
 ## Hyper-V (Windows Pro/Enterprise) — NOT RUN
 
-1. Nova VM de **Geração 2**, 256 MB de RAM, sem disco.
-2. **Segurança**: desmarque *Habilitar Inicialização Segura*.
-3. **Unidade de DVD**: a ISO.
-4. A saída serial do Hyper-V vai para um *named pipe*. No PowerShell (admin):
+1. Nova VM de **Geração 1**, 256 MB de RAM, sem disco. A Geração 2 não tem teclado PS/2
+   (usa um teclado sintético), então o shell do Peregrinus não receberia o teclado nela.
+   Isso é dedução a partir do hardware que cada geração emula, não um teste.
+2. **Unidade de DVD**: a ISO.
+3. A saída serial do Hyper-V vai para um *named pipe*. No PowerShell (admin):
    `Set-VMComPort -VMName Peregrinus -Number 1 -Path \\.\pipe\peregrinus`,
    e leia o pipe com um cliente de pipe (por exemplo PuTTY, conexão *Serial*, linha `\\.\pipe\peregrinus`).
 

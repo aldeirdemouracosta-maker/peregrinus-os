@@ -66,7 +66,9 @@ FUZZ_SECONDS=60 ./tests/fuzz.sh   # libFuzzer + ASan/UBSan over all untrusted-in
 The boot log is shown on screen (framebuffer text console) as well as on COM1. After boot a small
 shell (`peregrinus>`; type `ajuda`) reads the PS/2 keyboard (ABNT2 by default) and COM1, and runs a
 bounded HolyC subset (`hc`, see `docs/HOLYC.md`). An experimental `llm-local` profile runs a
-small language model from the USB stick (`conversa`, see `docs/IA-LOCAL.md`).
+small language model from the USB stick (`conversa`, see `docs/IA-LOCAL.md`). The `ia-ponte` profile
+asks a larger model running on the GPU of a Linux host through the serial port (`pergunte`; Linux
+side and Tesla P100/CUDA setup in `docs/IA-GPU.md`; the GPU part is NOT RUN).
 
 Running it in a virtual machine next to your desktop OS (QEMU tested; VirtualBox and Hyper-V
 NOT RUN): see `docs/VIRTUAL-MACHINE.md`.

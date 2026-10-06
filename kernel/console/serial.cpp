@@ -40,14 +40,22 @@ bool poll_input(char& c) {
     return true;
 }
 
-void putc(char c) {
-    if (g_mirror) g_mirror(c);
+static void put_uart(char c) {
     if (!g_present) return;
     // Generous bound: the serial line is also a command channel, so a slow consumer must not
     // lose bytes. A UART that stays busy that long is considered wedged and is switched off
     // (fail-closed: one timeout, never a timeout per character).
     if (!spin::until([] { return tx_ready(); }, 20000000)) { g_present = false; return; }
     peregrinus::io::out8(COM1, static_cast<unsigned char>(c));
+}
+
+void putc(char c) {
+    if (g_mirror) g_mirror(c);
+    put_uart(c);
+}
+
+void write_raw(const char* s, unsigned long n) {
+    for (unsigned long i = 0; i < n; ++i) put_uart(s[i]);
 }
 
 void write(const char* s) {

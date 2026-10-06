@@ -16,9 +16,15 @@ for bad in PEREGRINUS_QEMU_E1000_SANDBOX PEREGRINUS_RECOVERY_COMMIT_LIVE PEREGRI
     echo "FAIL: llm-local + $bad compiled; the LLM profile must be exclusive" >&2; exit 1
   fi
 done
+host_cxx -DEXPECT_AI_BRIDGE -DPEREGRINUS_AI_BRIDGE=1 "$T" -o "$TMP/a"
+for bad in PEREGRINUS_LLM_LOCAL PEREGRINUS_QEMU_E1000_SANDBOX PEREGRINUS_RECOVERY_COMMIT_LIVE PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST PEREGRINUS_QEMU_DMA_TEST PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST; do
+  if host_cxx -DEXPECT_AI_BRIDGE -DPEREGRINUS_AI_BRIDGE=1 -D$bad=1 "$T" -o "$TMP/a" 2>/dev/null; then
+    echo "FAIL: ia-ponte + $bad compiled; the bridge profile must be exclusive" >&2; exit 1
+  fi
+done
 for bad in PEREGRINUS_RECOVERY_COMMIT_LIVE PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST PEREGRINUS_QEMU_DMA_TEST PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST; do
   if host_cxx -DEXPECT_E1000 -DPEREGRINUS_QEMU_E1000_SANDBOX=1 -D$bad=1 "$T" -o "$TMP/a" 2>/dev/null; then
     echo "FAIL: e1000 + $bad compiled; live profiles must be mutually exclusive" >&2; exit 1
   fi
 done
-echo 'PASS: profile matrix (SAFE / e1000 / recovery-live / QEMU commit / llm-local) and mutual exclusion of live profiles.'
+echo 'PASS: profile matrix (SAFE / e1000 / recovery-live / QEMU commit / llm-local / ia-ponte) and mutual exclusion of live profiles.'

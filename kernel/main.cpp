@@ -38,6 +38,9 @@
 #include "storage/recovery_journal.hpp"
 #include "storage/recovery_journal_probe.hpp"
 #include "config/features.hpp"
+#if defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1
+#include "shell/ai_bridge.hpp"
+#endif
 #include "arch/x86_64/kstack.hpp"
 #include "input/keyboard.hpp"
 #include "input/ps2.hpp"
@@ -62,6 +65,7 @@ static void kmain_stage2();
 static void run_shell(const peregrinus::shell::SystemInfo& info);
 static const char* current_layout();
 static decltype(peregrinus::shell::SystemInfo::converse) llm_converse();
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask();
 extern "C" const char* peregrinus_stack_guard_source;
 
 extern "C" void kmain(){
@@ -161,7 +165,7 @@ static void kmain_stage2(){
     const shell::SystemInfo info{PEREGRINUS_RELEASE_NAME,security::root_trust::build_generation,security::root_trust::security_epoch,
         security::guard_policy::action_name(guard.action),integrity.trusted(),peregrinus_stack_guard_source,text_console::ready(),kbd,
         m.usable_memory_bytes/(1024*1024),m.pci_functions,m.local_apics,m.io_apics,m.madt_present,m.mcfg_present,
-        irq,interrupts::timer_hz,interrupts::ticks,current_layout,llm_converse()};
+        irq,interrupts::timer_hz,interrupts::ticks,current_layout,llm_converse(),ai_ask()};
     run_shell(info);
 }
 
@@ -177,6 +181,42 @@ static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){
 }
 #else
 static decltype(peregrinus::shell::SystemInfo::converse) llm_converse(){return nullptr;}
+#endif
+#if defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1
+// Serial AI bridge: the question leaves as one framed write on COM1 (not mirrored to the screen);
+// the wait is bounded by the timer deadline and Esc. The answer is sanitized text, only printed.
+static uint32_t g_ai_seq=0;
+static bool ai_serial_byte(uint8_t& b){return peregrinus::interrupts::next_serial_byte(b);}
+static bool ai_scancode(uint8_t& sc){return peregrinus::interrupts::next_scancode(sc);}
+static void ai_question(const char* q,bool fresh,peregrinus::shell::Output out){
+    using namespace peregrinus;
+    if(!interrupts::active()){out("Ponte de IA indisponível: requer o timer (interrupções ativas).\n");return;}
+    if(!serial::present()){out("Ponte de IA indisponível: não há porta serial COM1.\n");return;}
+    static char frame[shell::LineEditor::capacity*2+32];
+    static ai_bridge::AnswerParser parser;
+    const uint32_t seq=++g_ai_seq;
+    const size_t n=ai_bridge::encode_question(seq,fresh,q,frame,sizeof(frame));
+    if(!n){out("Pergunta longa demais.\n");return;}
+    serial::write_raw(frame,n);
+    out(fresh?"(nova conversa) aguardando a IA do Linux... Esc cancela\n":"aguardando a IA do Linux... Esc cancela\n");
+    parser.reset(seq);
+    const ai_bridge::Io io{ai_serial_byte,ai_scancode,interrupts::ticks,interrupts::idle_wait};
+    const uint64_t deadline=interrupts::ticks()+uint64_t(ai_bridge::answer_timeout_seconds)*interrupts::timer_hz;
+    switch(ai_bridge::wait(parser,io,deadline)){
+    case ai_bridge::Outcome::answered:
+        out(parser.text());
+        if(parser.length()==0||parser.text()[parser.length()-1]!='\n')out("\n");
+        if(parser.truncated())out("[resposta cortada no limite de 2048 bytes]\n");
+        break;
+    case ai_bridge::Outcome::host_error: out("IA indisponível: ");out(parser.text());out("\n");break;
+    case ai_bridge::Outcome::cancelled: out("Pergunta cancelada (Esc).\n");break;
+    case ai_bridge::Outcome::timed_out: out("IA indisponível: sem resposta em 120 s (a ponte está rodando no Linux?).\n");break;
+    case ai_bridge::Outcome::malformed: out("Resposta inválida da ponte; descartada.\n");break;
+    }
+}
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask(){return ai_question;}
+#else
+static decltype(peregrinus::shell::SystemInfo::ask) ai_ask(){return nullptr;}
 #endif
 static const char* current_layout(){return peregrinus::keyboard::layout_name(g_keys.layout());}
 static void run_shell(const peregrinus::shell::SystemInfo& info){

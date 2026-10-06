@@ -12,6 +12,17 @@
      (defined(PEREGRINUS_RECOVERY_COMMIT_LIVE) && PEREGRINUS_RECOVERY_COMMIT_LIVE == 1))
 #error "Peregrinus: the local-LLM profile is exclusive of the e1000 and storage-write profiles"
 #endif
+// The serial AI bridge profile is SAFE plus the `pergunte` command: it may not be combined with
+// any other non-SAFE profile.
+#if (defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1) && \
+    ((defined(PEREGRINUS_LLM_LOCAL) && PEREGRINUS_LLM_LOCAL == 1) || \
+     (defined(PEREGRINUS_QEMU_E1000_SANDBOX) && PEREGRINUS_QEMU_E1000_SANDBOX == 1) || \
+     (defined(PEREGRINUS_QEMU_DMA_TEST) && PEREGRINUS_QEMU_DMA_TEST == 1) || \
+     (defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
+     (defined(PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST) && PEREGRINUS_QEMU_RECOVERY_COMMIT_TEST == 1) || \
+     (defined(PEREGRINUS_RECOVERY_COMMIT_LIVE) && PEREGRINUS_RECOVERY_COMMIT_LIVE == 1))
+#error "Peregrinus: the AI bridge profile is SAFE plus the bridge; it combines with no other profile"
+#endif
 #if ((defined(PEREGRINUS_QEMU_E1000_SANDBOX) && PEREGRINUS_QEMU_E1000_SANDBOX == 1) && \
      ((defined(PEREGRINUS_QEMU_DMA_TEST) && PEREGRINUS_QEMU_DMA_TEST == 1) || \
       (defined(PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST) && PEREGRINUS_QEMU_RECOVERY_JOURNAL_TEST == 1) || \
@@ -73,6 +84,12 @@ inline constexpr bool storage_policy_required=ahci_dma_read_live||recovery_metad
 inline constexpr bool llm_local=true;
 #else
 inline constexpr bool llm_local=false;
+#endif
+
+#if defined(PEREGRINUS_AI_BRIDGE) && PEREGRINUS_AI_BRIDGE == 1
+inline constexpr bool ai_bridge=true;
+#else
+inline constexpr bool ai_bridge=false;
 #endif
 
 inline constexpr bool itco_watchdog_arm_live=false;

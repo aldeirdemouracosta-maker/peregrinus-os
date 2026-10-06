@@ -20,6 +20,9 @@ struct SystemInfo {
     const char* (*layout)();       // current keyboard layout name (may be null)
     // Local LLM (llm-local profile only; null otherwise). prompt is Latin-1.
     void (*converse)(const char* prompt, bool greedy, Output out);
+    // Serial AI bridge to an LLM on the host (ia-ponte profile only; null otherwise).
+    // question is Latin-1; the answer is only printed, never executed.
+    void (*ask)(const char* question, bool new_conversation, Output out);
 };
 enum class Action : uint8_t { none, clear_screen, reboot, halt, layout_us, layout_abnt2, holyc_block };
 

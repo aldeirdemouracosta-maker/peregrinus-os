@@ -186,6 +186,24 @@ case_llm(){
   forbid llm-tampered.log "$FATAL|admitted"
   ./scripts/make-iso.sh llm-local >/dev/null  # restore the default image
 }
+case_ia_ponte(){
+  echo "== serial AI bridge (ia-ponte profile): keyboard question -> COM1 -> scripts/ia-ponte.py -> fake LLM server"
+  local iso; iso=$(./scripts/make-iso.sh ia-ponte | tail -1)
+  local ser="$OUT/ia-ponte.ser" mon="$OUT/ia-ponte.mon" blog="$OUT/ia-ponte.log"; rm -f "$ser" "$mon" "$blog" "$OUT/ia-ponte.ppm"
+  coproc FAKE { exec python3 tests/ia_ponte_fake_server.py 2>/dev/null; }
+  local port; read -r port <&"${FAKE[0]}"
+  "${QEMU[@]}" -chardev socket,id=s0,path="$ser",server=on,wait=off -serial chardev:s0 \
+    -monitor unix:"$mon",server,nowait -cdrom "$iso" & local pid=$!
+  python3 scripts/ia-ponte.py --serial unix:"$ser" --server "http://127.0.0.1:$port" --no-stdin > "$blog" 2>&1 & local bpid=$!
+  if python3 tests/qemu/ia_ponte_drive.py "$blog" "$mon" "$PWD/$OUT/ia-ponte.ppm" "$bpid" > "$OUT/ia-ponte.txt" 2>&1; then
+    sed 's/^/  /' "$OUT/ia-ponte.txt"
+  else tail -5 "$OUT/ia-ponte.txt"; FAILS=$((FAILS+1)); fi
+  kill "$pid" "$bpid" "$FAKE_PID" 2>/dev/null || true; wait "$pid" "$bpid" "$FAKE_PID" 2>/dev/null || true
+  if python3 tests/qemu/screen_text.py "$OUT/ia-ponte.ppm" 'Resposta de teste: capital' 'pergunte sem ponte' 'Pergunta cancelada (Esc).' > "$OUT/ia-ponte-screen.txt" \
+     && ! grep -q 'PGQ1' "$OUT/ia-ponte-screen.txt"; then
+    echo "  ok: answer and Esc cancel on screen; protocol frames never drawn"
+  else tail -3 "$OUT/ia-ponte-screen.txt"; FAILS=$((FAILS+1)); fi
+}
 case_double_fault(){
   echo "== kernel stack overflow hits the guard page and is reported (no silent triple fault)"
   local iso; iso=$(./scripts/make-iso.sh double-fault-test | tail -1)
@@ -194,7 +212,7 @@ case_double_fault(){
 }
 
 CASES=("$@")
-[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell no_serial idle llm e1000 recovery_commit_test recovery_live double_fault)
+[[ ${#CASES[@]} -gt 0 ]] || CASES=(safe_bios safe_uefi uefi_controller screen shell no_serial idle llm ia_ponte e1000 recovery_commit_test recovery_live double_fault)
 for c in "${CASES[@]}"; do "case_$c"; done
 if (( FAILS )); then echo "QEMU qualification: $FAILS failure(s); serial logs in $OUT/"; exit 1; fi
 echo "QEMU qualification: PASS (${CASES[*]})"

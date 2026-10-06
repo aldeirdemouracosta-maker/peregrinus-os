@@ -8,6 +8,7 @@ static_assert(!f::ahci_dma_read_live && !f::recovery_journal_read_live && !f::re
 static_assert(!f::nic_driver_live && !f::firewall_packet_hook_live && !f::dma32_required, "SAFE: no NIC, no DMA32");
 static_assert(!f::storage_policy_required, "SAFE boots passively");
 static_assert(!f::llm_local, "SAFE has no local LLM");
+static_assert(!f::ai_bridge, "SAFE has no serial AI bridge");
 #elif defined(EXPECT_E1000)
 static_assert(f::nic_driver_live && f::firewall_packet_hook_live && f::dma32_required, "e1000: live NIC");
 static_assert(!f::ahci_dma_read_live && !f::recovery_journal_write_live && !f::storage_policy_required, "e1000: never touches storage");
@@ -17,6 +18,9 @@ static_assert(!f::recovery_journal_write_test_live && !f::disposable_qemu_disk_o
 static_assert(!f::nic_driver_live && f::storage_policy_required, "recovery-live: no NIC, disk policy mandatory");
 #elif defined(EXPECT_LLM)
 static_assert(f::llm_local && !f::nic_driver_live && !f::ahci_dma_read_live && !f::storage_policy_required, "llm-local: no NIC, no disk");
+#elif defined(EXPECT_AI_BRIDGE)
+static_assert(f::ai_bridge && !f::llm_local && !f::nic_driver_live && !f::dma32_required, "ia-ponte: SAFE plus the bridge");
+static_assert(!f::ahci_dma_read_live && !f::recovery_journal_write_live && !f::storage_policy_required, "ia-ponte: no disk");
 #elif defined(EXPECT_RECOVERY_COMMIT_TEST)
 static_assert(f::ahci_dma_read_live && f::recovery_journal_commit_live && f::disposable_qemu_disk_only && f::storage_policy_required, "QEMU commit test");
 #else

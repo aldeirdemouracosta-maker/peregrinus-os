@@ -63,3 +63,6 @@ mais. A velocidade em hardware real ainda não foi medida (NOT RUN).
   posições por pergunta).
 - **Sem memória de conversa:** cada `conversa` é uma completação independente.
 - **Não testado:** em hardware real.
+
+Para um modelo bem maior, na GPU de um Linux ao lado (ex.: Tesla P100), veja `docs/IA-GPU.md`
+(perfil `ia-ponte`, comando `pergunte`).

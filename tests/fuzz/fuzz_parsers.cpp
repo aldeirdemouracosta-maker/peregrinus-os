@@ -11,6 +11,7 @@
 #include "security/quarantine.hpp"
 #include "shell/holyc.hpp"
 #include "llm/engine.hpp"
+#include "shell/ai_bridge.hpp"
 #include <peregrinus/recovery_journal.h>
 
 using namespace peregrinus;
@@ -29,7 +30,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     ++data; --size;
     const net::e1000::MacAddress mac{{0x52, 0x54, 0, 0x12, 0x34, 0x56}};
     uint8_t out[1514];
-    switch (selector % 7) {
+    switch (selector % 8) {
         case 0: {
             const auto dir = (selector & 0x80) ? security::firewall::Direction::ingress : security::firewall::Direction::egress;
             dp.inspect(dir, data, size);
@@ -78,6 +79,27 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             llm::Engine e;
             if (e.load(data, cut, data + cut, size - cut, arena) == llm::LoadStatus::ok)
                 e.generate("ab", 4, 0.0f, 0.9f, 1, [](const char*) {});
+            break;
+        }
+        case 7: {
+            // Serial AI bridge answers from the host: any byte stream must keep the text bounded,
+            // NUL-terminated and free of control bytes other than '\n'.
+            static ai_bridge::AnswerParser p;
+            p.reset(selector & 0x7F);
+            for (size_t i = 0; i < size; ++i) {
+                if (p.feed(data[i]) != ai_bridge::Status::pending) p.reset(selector & 0x7F);
+                if (p.length() > ai_bridge::max_answer || std::strlen(p.text()) != p.length()) __builtin_trap();
+                for (size_t k = 0; k < p.length(); ++k) {
+                    const uint8_t c = static_cast<uint8_t>(p.text()[k]);
+                    if ((c < 0x20 && c != '\n') || c == 0x7F) __builtin_trap();
+                }
+            }
+            // The shell always passes a NUL-terminated line of at most 160 characters.
+            char line[161]; const size_t ln = size < 160 ? size : 160;
+            std::memcpy(line, data, ln); line[ln] = 0;
+            char q[64];
+            const size_t n = ai_bridge::encode_question(selector, selector & 1, line, q, sizeof(q));
+            if (n > sizeof(q)) __builtin_trap();
             break;
         }
     }

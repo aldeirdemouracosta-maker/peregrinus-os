@@ -104,6 +104,17 @@ como módulos do Limine e só são aceitos se os SHA-256 estiverem na lista de p
 a byte ao `run.c` original (`tests/llm.sh`) e, no QEMU, idêntica ao motor no PC; um modelo com 1
 byte alterado é recusado. Detalhes e uso com stories15M: `docs/IA-LOCAL.md`.
 
+## Ponte de IA com o Linux (perfil `ia-ponte`)
+
+O comando `pergunte <texto>` envia a pergunta pela COM1, num quadro com número de sequência
+(STX/ETX). Ele vai para `scripts/ia-ponte.py`, no Linux ao lado, que consulta o llama-server local
+(por exemplo, na Tesla P100 com CUDA) e devolve a resposta. O kernel espera com prazo (120 s) e com
+Esc para cancelar. Respostas velhas são ignoradas, um quadro malformado é descartado e o texto é
+saneado antes de ser **apenas impresso**. A ponte só aceita servidor local e saneia de novo. O
+perfil não tem rede nem disco, e o SAFE não contém a ponte. Testes: `tests/ai_bridge.sh`, fuzzing,
+`tests/ia_ponte_bridge.sh` e o cenário QEMU `ia_ponte`, com servidor de IA falso. A parte de GPU
+(driver, CUDA, desempenho) é NOT RUN. Detalhes: `docs/IA-GPU.md`.
+
 ## Ressalvas (não resolvidas por código)
 
 - **LKG ainda é a geração 22.** O artefato LKG recovery-live (gen 22) tem o erro 2 e não consegue confirmar boot. Se a CURRENT falhar, um fallback para essa LKG também não confirmará. Promover a geração 24 a LKG é uma decisão de release, a ser tomada depois de qualificar a 0.1.1 em hardware.

@@ -139,6 +139,8 @@ check: $(KERNEL)
 	./tests/ring.sh
 	./tests/holyc.sh
 	./tests/llm.sh
+	./tests/ai_bridge.sh
+	./tests/ia_ponte_bridge.sh
 	./tests/preboot_recovery.sh
 	./tests/preboot_controller_binary.sh
 	./tests/firewall.sh
@@ -218,7 +220,12 @@ $(BUILD)/kernel/llm/%.o: CXXFLAGS := $(filter-out -mgeneral-regs-only,$(CXXFLAGS
 llm-local:
 	$(MAKE) BUILD=build-llm-local SEAL_LABEL=$(RELEASE_TAG)-LLM-LOCAL EXTRA_CPPFLAGS="-DPEREGRINUS_LLM_LOCAL=1" EXTRA_CPP_SRCS="$(LLM_CPP_SRCS)" all
 
+# Serial AI bridge profile: SAFE plus the `pergunte` command, which asks an LLM running on a
+# Linux host through COM1 (scripts/ia-ponte.py). See docs/IA-GPU.md.
+ia-ponte:
+	$(MAKE) BUILD=build-ia-ponte SEAL_LABEL=$(RELEASE_TAG)-IA-PONTE EXTRA_CPPFLAGS="-DPEREGRINUS_AI_BRIDGE=1" EXTRA_CPP_SRCS="kernel/shell/ai_bridge.cpp" all
+
 qemu-e1000-sandbox:
 	$(MAKE) BUILD=build-qemu-e1000 SEAL_LABEL=$(RELEASE_TAG)-QEMU-E1000 EXTRA_CPPFLAGS="-DPEREGRINUS_QEMU_E1000_SANDBOX=1 -DPEREGRINUS_SLOT_CURRENT=1" EXTRA_CPP_SRCS="$(E1000_CPP_SRCS)" all
 
-.PHONY: all clean check double-fault-test-kernel qemu-qualify llm-local iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
+.PHONY: all clean check double-fault-test-kernel qemu-qualify llm-local ia-ponte iso qemu dma-test-kernel qemu-test-disk current-slot lkg-slot secure-slots trusted-boot-controller recovery-journal-test-kernel recovery-commit-test-kernel preboot-recovery-controller current-recovery-live lkg-recovery-live recovery-live-slots qemu-e1000-sandbox
